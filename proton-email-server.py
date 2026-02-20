@@ -67,6 +67,7 @@ class ProtonEmailClient:
         """Connect to IMAP server"""
         try:
             mail = imaplib.IMAP4(self.imap_host, self.imap_port)
+            mail.starttls()
             mail.login(self.email, self.password)
             return mail
         except Exception as e:
