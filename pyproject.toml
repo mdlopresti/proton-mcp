@@ -1,0 +1,35 @@
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "W",    # pycodestyle warnings
+    "F",    # pyflakes
+    "I",    # isort
+    "B",    # flake8-bugbear
+    "S",    # flake8-bandit (security)
+    "UP",   # pyupgrade
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "S101",   # assert usage (fine for this project)
+    "S603",   # subprocess calls (not used)
+    "S607",   # partial path to executable (not used)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"proton-email-server.py" = [
+    "S110",   # try-except-pass in MIME parsing - intentional silent skip of malformed parts
+    "S112",   # try-except-continue in MIME parsing - same reason
+    "S113",   # requests timeout - we set timeouts explicitly
+]
+
+[tool.mypy]
+python_version = "3.12"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+check_untyped_defs = true
+ignore_missing_imports = true
