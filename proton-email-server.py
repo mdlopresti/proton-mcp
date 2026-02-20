@@ -12,7 +12,8 @@ from email.mime.multipart import MIMEMultipart
 from email.header import decode_header
 from typing import Any, List, Optional, Dict, Tuple
 from datetime import datetime, timedelta
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
+import ipaddress
 import time
 
 from mcp.server.fastmcp import FastMCP
@@ -41,7 +42,28 @@ class ProtonEmailClient:
         
         if not all([self.email, self.password]):
             raise ValueError("Email credentials not found in environment variables")
-    
+
+    @staticmethod
+    def _validate_email_id(email_id: str) -> str:
+        """Validate email ID is numeric (single or comma-separated list)."""
+        email_id = email_id.strip()
+        if not re.match(r'^\d+(,\s*\d+)*$', email_id):
+            raise ValueError(f"Invalid email ID format: {email_id}")
+        return email_id
+
+    @staticmethod
+    def _validate_folder_name(folder_name: str) -> str:
+        """Validate folder name contains only safe characters."""
+        folder_name = folder_name.strip()
+        if not folder_name:
+            raise ValueError("Folder name cannot be empty")
+        # Allow alphanumeric, spaces, hyphens, underscores, dots, forward slashes (for nested folders)
+        if not re.match(r'^[\w\s\-./]+$', folder_name):
+            raise ValueError(f"Invalid folder name: {folder_name}")
+        if '..' in folder_name:
+            raise ValueError(f"Directory traversal not allowed in folder name: {folder_name}")
+        return folder_name
+
     def connect_imap(self):
         """Connect to IMAP server"""
         try:
@@ -216,21 +238,24 @@ class ProtonEmailClient:
                     
                     if status == 'OK' and msg_data:
                         # Process each email in the batch
-                        for j, item in enumerate(msg_data):
+                        for item in msg_data:
                             if isinstance(item, tuple) and len(item) >= 2:
-                                raw_email = item[1]
-                                if raw_email:
-                                    email_message = email.message_from_bytes(raw_email)
-                                    email_id = batch_ids[j // 2] if j % 2 == 1 else batch_ids[j]
-                                    
-                                    emails[email_id] = {
-                                        'id': email_id,
-                                        'subject': self.decode_mime_words(email_message['Subject']),
-                                        'from': self.decode_mime_words(email_message['From']),
-                                        'to': self.decode_mime_words(email_message['To']),
-                                        'date': email_message['Date'],
-                                        'body': self.get_email_body(email_message)
-                                    }
+                                # Parse sequence number from IMAP response header
+                                # Format: b'123 (RFC822 {size}' or b'123 (BODY[] {size}'
+                                header = item[0]
+                                if isinstance(header, bytes):
+                                    seq_num = header.split()[0].decode('ascii', errors='ignore')
+                                    raw_email = item[1]
+                                    if raw_email:
+                                        email_message = email.message_from_bytes(raw_email)
+                                        emails[seq_num] = {
+                                            'id': seq_num,
+                                            'subject': self.decode_mime_words(email_message['Subject']),
+                                            'from': self.decode_mime_words(email_message['From']),
+                                            'to': self.decode_mime_words(email_message['To']),
+                                            'date': email_message['Date'],
+                                            'body': self.get_email_body(email_message)
+                                        }
                 except Exception as e:
                     logger.warning(f"Failed to fetch batch {i//batch_size + 1}: {e}")
                     # Fallback to individual fetching for this batch
@@ -287,56 +312,60 @@ class ProtonEmailClient:
                     status, msg_data = mail.fetch(id_list, '(RFC822)')
                     
                     if status == 'OK' and msg_data:
-                        for j, item in enumerate(msg_data):
+                        for item in msg_data:
                             if isinstance(item, tuple) and len(item) >= 2:
-                                raw_email = item[1]
-                                if raw_email:
-                                    email_message = email.message_from_bytes(raw_email)
-                                    email_id = batch_ids[j // 2] if j % 2 == 1 else batch_ids[j]
+                                # Parse sequence number from IMAP response header
+                                # Format: b'123 (RFC822 {size}' or b'123 (BODY[] {size}'
+                                header = item[0]
+                                if isinstance(header, bytes):
+                                    seq_num = header.split()[0].decode('ascii', errors='ignore')
+                                    raw_email = item[1]
+                                    if raw_email:
+                                        email_message = email.message_from_bytes(raw_email)
                                     
-                                    # Extract both text and HTML content
-                                    text_content = ""
-                                    html_content = ""
+                                        # Extract both text and HTML content
+                                        text_content = ""
+                                        html_content = ""
                                     
-                                    if email_message.is_multipart():
-                                        for part in email_message.walk():
-                                            content_type = part.get_content_type()
-                                            content_disposition = str(part.get("Content-Disposition"))
-                                            
-                                            if "attachment" not in content_disposition:
-                                                try:
-                                                    payload = part.get_payload(decode=True)
-                                                    if payload:
-                                                        content = payload.decode('utf-8', errors='ignore')
-                                                        if content_type == "text/plain":
-                                                            text_content += content
-                                                        elif content_type == "text/html":
-                                                            html_content += content
-                                                except:
-                                                    continue
-                                    else:
-                                        try:
-                                            payload = email_message.get_payload(decode=True)
-                                            if payload:
-                                                content = payload.decode('utf-8', errors='ignore')
-                                                if email_message.get_content_type() == "text/html":
-                                                    html_content = content
-                                                else:
-                                                    text_content = content
-                                        except:
-                                            pass
-                                    
-                                    emails[email_id] = {
-                                        'id': email_id,
-                                        'subject': self.decode_mime_words(email_message['Subject']),
-                                        'from': self.decode_mime_words(email_message['From']),
-                                        'to': self.decode_mime_words(email_message['To']),
-                                        'date': email_message['Date'],
-                                        'text_body': text_content,
-                                        'html_body': html_content,
-                                        'list_unsubscribe': email_message.get('List-Unsubscribe', ''),
-                                        'list_unsubscribe_post': email_message.get('List-Unsubscribe-Post', '')
-                                    }
+                                        if email_message.is_multipart():
+                                            for part in email_message.walk():
+                                                content_type = part.get_content_type()
+                                                content_disposition = str(part.get("Content-Disposition"))
+                                                
+                                                if "attachment" not in content_disposition:
+                                                    try:
+                                                        payload = part.get_payload(decode=True)
+                                                        if payload:
+                                                            content = payload.decode('utf-8', errors='ignore')
+                                                            if content_type == "text/plain":
+                                                                text_content += content
+                                                            elif content_type == "text/html":
+                                                                html_content += content
+                                                    except:
+                                                        continue
+                                        else:
+                                            try:
+                                                payload = email_message.get_payload(decode=True)
+                                                if payload:
+                                                    content = payload.decode('utf-8', errors='ignore')
+                                                    if email_message.get_content_type() == "text/html":
+                                                        html_content = content
+                                                    else:
+                                                        text_content = content
+                                            except:
+                                                pass
+                                        
+                                        emails[seq_num] = {
+                                            'id': seq_num,
+                                            'subject': self.decode_mime_words(email_message['Subject']),
+                                            'from': self.decode_mime_words(email_message['From']),
+                                            'to': self.decode_mime_words(email_message['To']),
+                                            'date': email_message['Date'],
+                                            'text_body': text_content,
+                                            'html_body': html_content,
+                                            'list_unsubscribe': email_message.get('List-Unsubscribe', ''),
+                                            'list_unsubscribe_post': email_message.get('List-Unsubscribe-Post', '')
+                                        }
                 except Exception as e:
                     logger.warning(f"Failed to fetch HTML batch {i//batch_size + 1}: {e}")
                     # Fallback to individual fetching
@@ -1315,6 +1344,51 @@ class ProtonEmailClient:
             'has_one_click': any(method.get('one_click', False) for method in unique_methods)
         }
     
+    def _is_safe_url(self, url: str) -> bool:
+        """
+        Validate that a URL is safe to request (not targeting internal/private networks).
+        Returns True if the URL is safe, False otherwise.
+        """
+        try:
+            parsed = urlparse(url)
+        except Exception:
+            return False
+
+        # Only allow http and https schemes
+        if parsed.scheme not in ('http', 'https'):
+            logging.warning(f"Blocked URL with non-HTTP scheme: {parsed.scheme}")
+            return False
+
+        hostname = parsed.hostname
+        if not hostname:
+            return False
+
+        # Reject localhost variants
+        if hostname in ('localhost', 'localhost.localdomain'):
+            logging.warning(f"Blocked request to localhost: {url}")
+            return False
+
+        # Check if hostname is an IP address and validate it
+        try:
+            addr = ipaddress.ip_address(hostname)
+            if addr.is_loopback:
+                logging.warning(f"Blocked request to loopback address: {url}")
+                return False
+            if addr.is_private:
+                logging.warning(f"Blocked request to private IP range: {url}")
+                return False
+            if addr.is_link_local:
+                logging.warning(f"Blocked request to link-local address: {url}")
+                return False
+            if addr.is_reserved:
+                logging.warning(f"Blocked request to reserved address: {url}")
+                return False
+        except ValueError:
+            # Not an IP address, it's a hostname string - allow it but log
+            logging.debug(f"URL uses hostname (not IP): {hostname}")
+
+        return True
+
     def execute_unsubscribe(self, unsubscribe_method: Dict, timeout: int = 10) -> Dict[str, Any]:
         """
         Execute an unsubscribe request.
@@ -1335,7 +1409,12 @@ class ProtonEmailClient:
                 
             elif unsubscribe_method['type'] == 'http':
                 url = unsubscribe_method['url']
-                
+
+                # Validate URL before making any request
+                if not self._is_safe_url(url):
+                    result['message'] = f"Blocked unsafe unsubscribe URL: {url}"
+                    return result
+
                 # Set up headers to look like a real browser
                 headers = {
                     'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36',
@@ -1348,13 +1427,24 @@ class ProtonEmailClient:
                 if unsubscribe_method.get('one_click'):
                     # RFC 8058 one-click unsubscribe
                     headers['List-Unsubscribe'] = 'One-Click'
-                    response = requests.post(url, headers=headers, timeout=timeout, allow_redirects=True)
+                    response = requests.post(url, headers=headers, timeout=timeout, allow_redirects=False)
                 else:
                     # Regular HTTP GET request
-                    response = requests.get(url, headers=headers, timeout=timeout, allow_redirects=True)
+                    response = requests.get(url, headers=headers, timeout=timeout, allow_redirects=False)
                 
+                # Handle redirects safely
+                if response.status_code in (301, 302, 303, 307, 308):
+                    redirect_url = response.headers.get('Location')
+                    if redirect_url:
+                        if not self._is_safe_url(redirect_url):
+                            result['status_code'] = response.status_code
+                            result['message'] = f"Blocked unsafe redirect to: {redirect_url}"
+                            return result
+                        # Follow the safe redirect
+                        response = requests.get(redirect_url, headers=headers, timeout=timeout, allow_redirects=False)
+
                 result['status_code'] = response.status_code
-                
+
                 if response.status_code in [200, 201, 202, 204]:
                     result['success'] = True
                     result['message'] = f"Unsubscribe request successful (HTTP {response.status_code})"
@@ -1416,6 +1506,11 @@ def get_email_content(email_id: str, mailbox: str = "INBOX") -> dict:
     Returns:
         Full email content including subject, from, to, date, and complete body
     """
+    try:
+        email_id = email_client._validate_email_id(email_id)
+    except ValueError as e:
+        return {"error": str(e)}
+
     try:
         email_data = email_client.get_full_email(email_id, mailbox)
         if email_data:
@@ -1570,6 +1665,13 @@ def move_email_to_folder(email_id: str, target_folder: str, source_folder: str =
         Status of the move operation
     """
     try:
+        email_id = email_client._validate_email_id(email_id)
+        target_folder = email_client._validate_folder_name(target_folder)
+        source_folder = email_client._validate_folder_name(source_folder)
+    except ValueError as e:
+        return {"error": str(e)}
+
+    try:
         success = email_client.move_email_to_folder(email_id, target_folder, source_folder)
         if success:
             return {
@@ -1609,6 +1711,11 @@ def create_folder(folder_name: str) -> dict:
         Status of the folder creation operation
     """
     try:
+        folder_name = email_client._validate_folder_name(folder_name)
+    except ValueError as e:
+        return {"error": str(e)}
+
+    try:
         success = email_client.create_folder(folder_name)
         if success:
             return {
@@ -1634,6 +1741,11 @@ def delete_folder(folder_name: str) -> dict:
     Returns:
         Status of the folder deletion operation
     """
+    try:
+        folder_name = email_client._validate_folder_name(folder_name)
+    except ValueError as e:
+        return {"error": str(e)}
+
     try:
         success = email_client.delete_folder(folder_name)
         if success:
@@ -1661,6 +1773,11 @@ def analyze_email_for_junk(email_id: str, mailbox: str = "INBOX") -> dict:
     Returns:
         Detailed junk analysis for the email
     """
+    try:
+        email_id = email_client._validate_email_id(email_id)
+    except ValueError as e:
+        return {"error": str(e)}
+
     try:
         # Get full email content
         email_data = email_client.get_full_email(email_id, mailbox)
@@ -1734,6 +1851,11 @@ def find_unsubscribe_links(email_id: str, mailbox: str = "INBOX") -> dict:
         Dictionary with unsubscribe methods found
     """
     try:
+        email_id = email_client._validate_email_id(email_id)
+    except ValueError as e:
+        return {"error": str(e)}
+
+    try:
         # Get full email content with HTML
         email_data = email_client.get_full_email_with_html(email_id, mailbox)
         if not email_data:
@@ -1760,6 +1882,11 @@ def unsubscribe_from_email(email_id: str, mailbox: str = "INBOX", method_index: 
     Returns:
         Result of unsubscribe attempt
     """
+    try:
+        email_id = email_client._validate_email_id(email_id)
+    except ValueError as e:
+        return {"error": str(e)}
+
     try:
         if not confirm:
             return {
@@ -2143,6 +2270,13 @@ def bulk_move_emails(email_ids: str, target_folder: str, source_folder: str = "I
         Dictionary with move operation results
     """
     try:
+        email_ids = email_client._validate_email_id(email_ids)
+        target_folder = email_client._validate_folder_name(target_folder)
+        source_folder = email_client._validate_folder_name(source_folder)
+    except ValueError as e:
+        return {"error": str(e)}
+
+    try:
         # Parse email IDs
         id_list = [id.strip() for id in email_ids.split(',') if id.strip()]
         
@@ -2173,6 +2307,11 @@ def bulk_mark_emails_as_read(email_ids: str, mailbox: str = "INBOX", mark_read: 
     Returns:
         Dictionary with marking operation results
     """
+    try:
+        email_ids = email_client._validate_email_id(email_ids)
+    except ValueError as e:
+        return {"error": str(e)}
+
     try:
         # Parse email IDs
         id_list = [id.strip() for id in email_ids.split(',') if id.strip()]
@@ -2207,6 +2346,11 @@ def bulk_mark_emails_as_important(email_ids: str, mailbox: str = "INBOX", mark_i
         Dictionary with marking operation results
     """
     try:
+        email_ids = email_client._validate_email_id(email_ids)
+    except ValueError as e:
+        return {"error": str(e)}
+
+    try:
         # Parse email IDs
         id_list = [id.strip() for id in email_ids.split(',') if id.strip()]
         
@@ -2239,6 +2383,11 @@ def bulk_delete_emails(email_ids: str, mailbox: str = "INBOX", permanent: bool =
     Returns:
         Dictionary with deletion results
     """
+    try:
+        email_ids = email_client._validate_email_id(email_ids)
+    except ValueError as e:
+        return {"error": str(e)}
+
     try:
         # Parse email IDs
         id_list = [id.strip() for id in email_ids.split(',') if id.strip()]
@@ -2290,6 +2439,11 @@ def bulk_get_emails(email_ids: str, mailbox: str = "INBOX") -> List[dict]:
     Returns:
         List of email objects with full content
     """
+    try:
+        email_ids = email_client._validate_email_id(email_ids)
+    except ValueError as e:
+        return {"error": str(e)}
+
     try:
         # Parse email IDs
         id_list = [id.strip() for id in email_ids.split(',') if id.strip()]
