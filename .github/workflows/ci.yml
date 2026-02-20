@@ -33,6 +33,38 @@ jobs:
       - name: Run mypy
         run: mypy proton-email-server.py
 
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install bandit
+      - name: Run bandit
+        run: bandit -r . -f json -o bandit-report.json --exit-zero
+      - name: Display results
+        run: bandit -r . -ll
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bandit-report
+          path: bandit-report.json
+
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pip-audit -r requirements.txt
+      - name: Run pip-audit
+        run: pip-audit -r requirements.txt
+
   syntax:
     name: Syntax Check
     runs-on: ubuntu-latest
