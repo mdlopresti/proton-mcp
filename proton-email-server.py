@@ -17,7 +17,6 @@ from urllib.parse import urlparse
 import requests
 from dotenv import load_dotenv
 from mcp.server.fastmcp import FastMCP
-from mcp.types import Resource
 
 # Load environment variables
 load_dotenv()
@@ -36,11 +35,11 @@ class ProtonEmailClient:
         self.imap_port = int(os.getenv("BRIDGE_IMAP_PORT", "1143"))
         self.smtp_host = os.getenv("BRIDGE_SMTP_HOST", "127.0.0.1")
         self.smtp_port = int(os.getenv("BRIDGE_SMTP_PORT", "1025"))
-        self.email = os.getenv("PROTON_EMAIL")
-        self.password = os.getenv("PROTON_BRIDGE_PASSWORD")
+        self.email: str = os.getenv("PROTON_EMAIL", "")
+        self.password: str = os.getenv("PROTON_BRIDGE_PASSWORD", "")
         self.rules_file = os.path.join(os.path.dirname(__file__), "filter_rules.json")
 
-        if not all([self.email, self.password]):
+        if not self.email or not self.password:
             raise ValueError("Email credentials not found in environment variables")
 
     @staticmethod
@@ -158,13 +157,15 @@ class ProtonEmailClient:
 
                 if content_type == "text/plain" and "attachment" not in content_disposition:
                     try:
-                        body = part.get_payload(decode=True).decode("utf-8", errors="ignore")
+                        raw = part.get_payload(decode=True)
+                        body = raw.decode("utf-8", errors="ignore") if isinstance(raw, bytes) else ""
                         break
                     except Exception:
                         continue
         else:
             try:
-                body = email_message.get_payload(decode=True).decode("utf-8", errors="ignore")
+                raw = email_message.get_payload(decode=True)
+                body = raw.decode("utf-8", errors="ignore") if isinstance(raw, bytes) else ""
             except Exception:
                 body = str(email_message.get_payload())
 
@@ -337,7 +338,7 @@ class ProtonEmailClient:
                                                 if "attachment" not in content_disposition:
                                                     try:
                                                         payload = part.get_payload(decode=True)
-                                                        if payload:
+                                                        if isinstance(payload, bytes):
                                                             content = payload.decode("utf-8", errors="ignore")
                                                             if content_type == "text/plain":
                                                                 text_content += content
@@ -348,7 +349,7 @@ class ProtonEmailClient:
                                         else:
                                             try:
                                                 payload = email_message.get_payload(decode=True)
-                                                if payload:
+                                                if isinstance(payload, bytes):
                                                     content = payload.decode("utf-8", errors="ignore")
                                                     if email_message.get_content_type() == "text/html":
                                                         html_content = content
@@ -383,12 +384,12 @@ class ProtonEmailClient:
 
         return emails
 
-    def send_email(self, to: str, subject: str, body: str, reply_to_id: str = None):
+    def send_email(self, to: str, subject: str, body: str, reply_to_id: str | None = None):
         """Send email via SMTP"""
         server = self.connect_smtp()
         try:
             msg = MIMEMultipart()
-            msg["From"] = self.email
+            msg["From"] = str(self.email)
             msg["To"] = to
             msg["Subject"] = subject
 
@@ -798,18 +799,19 @@ class ProtonEmailClient:
         finally:
             mail.logout()
 
-    def load_filter_rules(self) -> list[dict]:
+    def load_filter_rules(self) -> list[dict[str, Any]]:
         """Load filtering rules from JSON file"""
         try:
             if os.path.exists(self.rules_file):
                 with open(self.rules_file) as f:
-                    return json.load(f)
+                    rules: list[dict[str, Any]] = json.load(f)
+                    return rules
             return []
         except Exception as e:
             logger.error(f"Failed to load filter rules: {e}")
             return []
 
-    def save_filter_rules(self, rules: list[dict]) -> bool:
+    def save_filter_rules(self, rules: list[dict[str, Any]]) -> bool:
         """Save filtering rules to JSON file"""
         try:
             with open(self.rules_file, "w") as f:
@@ -998,7 +1000,7 @@ class ProtonEmailClient:
             return {"error": "Failed to retrieve email content"}
 
         # Group actions by type for bulk execution
-        bulk_actions = {
+        bulk_actions: dict[str, Any] = {
             "move_to_folder": {},  # {target_folder: [email_ids]}
             "mark_as_read": [],
             "mark_as_important": [],
@@ -1150,7 +1152,7 @@ class ProtonEmailClient:
             return {"emails_processed": 0, "actions_taken": 0, "bulk_results": {}}
 
         # Group actions for bulk execution
-        bulk_actions = {"move_to_folder": {}, "mark_as_read": [], "mark_as_important": [], "delete": []}
+        bulk_actions: dict[str, Any] = {"move_to_folder": {}, "mark_as_read": [], "mark_as_important": [], "delete": []}
 
         # Process emails against rules
         for email_id, full_email in full_emails.items():
@@ -1228,7 +1230,7 @@ class ProtonEmailClient:
                     if "attachment" not in content_disposition:
                         try:
                             payload = part.get_payload(decode=True)
-                            if payload:
+                            if isinstance(payload, bytes):
                                 content = payload.decode("utf-8", errors="ignore")
                                 if content_type == "text/plain":
                                     text_content += content
@@ -1239,7 +1241,7 @@ class ProtonEmailClient:
             else:
                 try:
                     payload = email_message.get_payload(decode=True)
-                    if payload:
+                    if isinstance(payload, bytes):
                         content = payload.decode("utf-8", errors="ignore")
                         if email_message.get_content_type() == "text/html":
                             html_content = content
@@ -1399,7 +1401,7 @@ class ProtonEmailClient:
         """
         Execute an unsubscribe request.
         """
-        result = {"method": unsubscribe_method, "success": False, "message": "", "status_code": None}
+        result: dict[str, Any] = {"method": unsubscribe_method, "success": False, "message": "", "status_code": None}
 
         try:
             if unsubscribe_method["type"] == "mailto":
@@ -1484,7 +1486,7 @@ email_client = ProtonEmailClient()
 
 # MCP Tools
 @mcp.tool()
-def search_emails(query: str = "ALL", mailbox: str = "INBOX", limit: int = 10) -> list[dict]:
+def search_emails(query: str = "ALL", mailbox: str = "INBOX", limit: int = 10) -> Any:
     """
     Search for emails in your Proton mailbox.
 
@@ -1503,7 +1505,7 @@ def search_emails(query: str = "ALL", mailbox: str = "INBOX", limit: int = 10) -
 
 
 @mcp.tool()
-def get_email_content(email_id: str, mailbox: str = "INBOX") -> dict:
+def get_email_content(email_id: str, mailbox: str = "INBOX") -> dict[str, Any]:
     """
     Get the full content of a specific email.
 
@@ -1520,7 +1522,7 @@ def get_email_content(email_id: str, mailbox: str = "INBOX") -> dict:
         return {"error": str(e)}
 
     try:
-        email_data = email_client.get_full_email(email_id, mailbox)
+        email_data: dict[str, Any] = email_client.get_full_email(email_id, mailbox)
         if email_data:
             return email_data
         else:
@@ -1530,7 +1532,7 @@ def get_email_content(email_id: str, mailbox: str = "INBOX") -> dict:
 
 
 @mcp.tool()
-def send_email(to: str, subject: str, body: str, reply_to_id: str = None) -> dict:
+def send_email(to: str, subject: str, body: str, reply_to_id: str | None = None) -> dict:
     """
     Send an email via Proton Mail.
 
@@ -1554,7 +1556,7 @@ def send_email(to: str, subject: str, body: str, reply_to_id: str = None) -> dic
 
 
 @mcp.tool()
-def get_recent_emails(days: int = 7, mailbox: str = "INBOX") -> list[dict]:
+def get_recent_emails(days: int = 7, mailbox: str = "INBOX") -> Any:
     """
     Get recent emails from the specified number of days.
 
@@ -1574,7 +1576,7 @@ def get_recent_emails(days: int = 7, mailbox: str = "INBOX") -> list[dict]:
 
 
 @mcp.tool()
-def filter_junk_emails(mailbox: str = "INBOX", limit: int = 20, action: str = "analyze") -> list[dict]:
+def filter_junk_emails(mailbox: str = "INBOX", limit: int = 20, action: str = "analyze") -> Any:
     """
     Filter and analyze emails for junk/spam content using optimized bulk operations.
 
@@ -1691,7 +1693,7 @@ def move_email_to_folder(email_id: str, target_folder: str, source_folder: str =
 
 
 @mcp.tool()
-def get_mailboxes() -> list[str]:
+def get_mailboxes() -> Any:
     """
     Get list of available mailboxes/folders.
 
@@ -1798,7 +1800,7 @@ def analyze_email_for_junk(email_id: str, mailbox: str = "INBOX") -> dict:
 @mcp.tool()
 def search_emails_filtered(
     query: str = "ALL", mailbox: str = "INBOX", limit: int = 10, exclude_junk: bool = False
-) -> list[dict]:
+) -> Any:
     """
     Search for emails with optional junk filtering.
 
@@ -1820,7 +1822,7 @@ def search_emails_filtered(
             return emails
 
         # Filter out junk emails
-        filtered_emails = []
+        filtered_emails: list[dict] = []
         for email_item in emails:
             if len(filtered_emails) >= limit:
                 break
@@ -1923,7 +1925,7 @@ def unsubscribe_from_email(email_id: str, mailbox: str = "INBOX", method_index: 
 
 
 @mcp.tool()
-def bulk_find_unsubscribe_opportunities(mailbox: str = "INBOX", days: int = 30, limit: int = 50) -> list[dict]:
+def bulk_find_unsubscribe_opportunities(mailbox: str = "INBOX", days: int = 30, limit: int = 50) -> Any:
     """
     Scan recent emails to find unsubscribe opportunities from mailing lists using bulk operations.
 
@@ -1996,7 +1998,7 @@ def bulk_find_unsubscribe_opportunities(mailbox: str = "INBOX", days: int = 30, 
 
 
 @mcp.tool()
-def get_mailing_list_senders(mailbox: str = "INBOX", days: int = 30, min_emails: int = 2) -> list[dict]:
+def get_mailing_list_senders(mailbox: str = "INBOX", days: int = 30, min_emails: int = 2) -> Any:
     """
     Identify frequent senders that might be mailing lists.
 
@@ -2097,7 +2099,7 @@ def create_filter_rule(rule_name: str, conditions: str, actions: str, enabled: b
 
 
 @mcp.tool()
-def list_filter_rules() -> list[dict]:
+def list_filter_rules() -> Any:
     """
     Get list of all filtering rules.
 
@@ -2135,7 +2137,11 @@ def delete_filter_rule(rule_id: str) -> dict:
 
 @mcp.tool()
 def update_filter_rule(
-    rule_id: str, enabled: bool = None, rule_name: str = None, conditions: str = None, actions: str = None
+    rule_id: str,
+    enabled: bool | None = None,
+    rule_name: str | None = None,
+    conditions: str | None = None,
+    actions: str | None = None,
 ) -> dict:
     """
     Update an existing filtering rule.
@@ -2151,7 +2157,7 @@ def update_filter_rule(
         Status of rule update
     """
     try:
-        updates = {}
+        updates: dict[str, Any] = {}
 
         if enabled is not None:
             updates["enabled"] = enabled
@@ -2425,7 +2431,7 @@ def apply_filter_rules_optimized(mailbox: str = "INBOX", limit: int = 200, chunk
 
 
 @mcp.tool()
-def bulk_get_emails(email_ids: str, mailbox: str = "INBOX") -> list[dict]:
+def bulk_get_emails(email_ids: str, mailbox: str = "INBOX") -> Any:
     """
     Efficiently retrieve multiple emails in bulk.
 
@@ -2465,29 +2471,16 @@ def bulk_get_emails(email_ids: str, mailbox: str = "INBOX") -> list[dict]:
 
 # MCP Resources
 @mcp.resource("proton://inbox/summary")
-def inbox_summary() -> Resource:
+def inbox_summary() -> str:
     """Get a summary of your inbox"""
     try:
         recent_emails = email_client.search_emails("ALL", "INBOX", 5)
         summary = "Recent emails in your Proton inbox:\n\n"
         for email_item in recent_emails:
             summary += f"{email_item['subject']} - From: {email_item['from']} ({email_item['date']})\n"
-
-        return Resource(
-            uri="proton://inbox/summary",
-            name="Inbox Summary",
-            description="Summary of recent emails in your Proton inbox",
-            mimeType="text/plain",
-            text=summary,
-        )
+        return summary
     except Exception as e:
-        return Resource(
-            uri="proton://inbox/summary",
-            name="Inbox Summary",
-            description="Error retrieving inbox summary",
-            mimeType="text/plain",
-            text=f"Error: {str(e)}",
-        )
+        return f"Error: {str(e)}"
 
 
 # Run the server
