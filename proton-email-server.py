@@ -1,4 +1,3 @@
-import asyncio
 import imaplib
 import smtplib
 import email
@@ -10,10 +9,11 @@ import json
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.header import decode_header
-from typing import Any, List, Optional, Dict, Tuple
+from typing import Any, List, Optional, Dict
 from datetime import datetime, timedelta
 from urllib.parse import urljoin, urlparse
 import time
+import uuid
 
 from mcp.server.fastmcp import FastMCP
 from mcp.types import Resource, Tool, TextContent
@@ -136,12 +136,12 @@ class ProtonEmailClient:
                     try:
                         body = part.get_payload(decode=True).decode('utf-8', errors='ignore')
                         break
-                    except:
+                    except Exception:
                         continue
         else:
             try:
                 body = email_message.get_payload(decode=True).decode('utf-8', errors='ignore')
-            except:
+            except Exception:
                 body = str(email_message.get_payload())
         
         return body
@@ -312,7 +312,7 @@ class ProtonEmailClient:
                                                             text_content += content
                                                         elif content_type == "text/html":
                                                             html_content += content
-                                                except:
+                                                except Exception:
                                                     continue
                                     else:
                                         try:
@@ -323,7 +323,7 @@ class ProtonEmailClient:
                                                     html_content = content
                                                 else:
                                                     text_content = content
-                                        except:
+                                        except Exception:
                                             pass
                                     
                                     emails[email_id] = {
@@ -643,7 +643,7 @@ class ProtonEmailClient:
                                     marked_count += 1
                                 else:
                                     failed_count += 1
-                            except:
+                            except Exception:
                                 failed_count += 1
                 
                 except Exception as e:
@@ -656,7 +656,7 @@ class ProtonEmailClient:
                                 marked_count += 1
                             else:
                                 failed_count += 1
-                        except:
+                        except Exception:
                             failed_count += 1
         
         except Exception as e:
@@ -822,7 +822,7 @@ class ProtonEmailClient:
         
         # Create new rule
         new_rule = {
-            'id': str(len(rules) + 1),
+            'id': str(uuid.uuid4()),
             'name': rule_name,
             'conditions': conditions,
             'actions': actions,
@@ -861,7 +861,8 @@ class ProtonEmailClient:
     def email_matches_rule(self, email_data: Dict, rule: Dict) -> bool:
         """Check if an email matches a filtering rule's conditions"""
         conditions = rule.get('conditions', {})
-        
+        matches = True
+
         for condition, value in conditions.items():
             if condition == 'from':
                 if value.lower() not in email_data.get('from', '').lower():
@@ -885,12 +886,16 @@ class ProtonEmailClient:
                     return False
             elif condition == 'has_attachments':
                 # This would need to be implemented based on email structure
-                pass
+                logger.warning(f"Condition '{condition}' is not yet implemented, skipping email")
+                matches = False
+                break
             elif condition == 'older_than_days' or condition == 'newer_than_days':
                 # This would need date parsing and comparison
-                pass
-        
-        return True
+                logger.warning(f"Condition '{condition}' is not yet implemented, skipping email")
+                matches = False
+                break
+
+        return matches
     
     def apply_rule_actions(self, email_id: str, rule: Dict, mailbox: str = "INBOX") -> Dict[str, Any]:
         """Apply the actions specified in a filtering rule to an email"""
@@ -905,7 +910,7 @@ class ProtonEmailClient:
                 elif action == 'mark_as_read':
                     if value:  # Only if True
                         # Implementation would require IMAP STORE command
-                        results[action] = {'success': True, 'marked_read': True}
+                        results[action] = {'success': False, 'message': 'Not implemented for individual emails; use bulk operations'}
                 elif action == 'delete':
                     if value:  # Only if True
                         success = self.move_email_to_folder(email_id, 'Trash', mailbox)
@@ -913,7 +918,7 @@ class ProtonEmailClient:
                 elif action == 'mark_as_important':
                     if value:  # Only if True
                         # Implementation would require IMAP flag setting
-                        results[action] = {'success': True, 'marked_important': True}
+                        results[action] = {'success': False, 'message': 'Not implemented for individual emails; use bulk operations'}
                 # Forward and auto-reply would be more complex implementations
             except Exception as e:
                 results[action] = {'success': False, 'error': str(e)}
@@ -1185,7 +1190,7 @@ class ProtonEmailClient:
                                     text_content += content
                                 elif content_type == "text/html":
                                     html_content += content
-                        except:
+                        except Exception:
                             continue
             else:
                 try:
@@ -1196,7 +1201,7 @@ class ProtonEmailClient:
                             html_content = content
                         else:
                             text_content = content
-                except:
+                except Exception:
                     pass
             
             return {
@@ -2227,25 +2232,29 @@ def bulk_mark_emails_as_important(email_ids: str, mailbox: str = "INBOX", mark_i
         return {"error": f"Failed to bulk mark emails as important: {str(e)}"}
 
 @mcp.tool()
-def bulk_delete_emails(email_ids: str, mailbox: str = "INBOX", permanent: bool = False) -> dict:
+def bulk_delete_emails(email_ids: str, mailbox: str = "INBOX", permanent: bool = False, confirm: bool = False) -> dict:
     """
     Bulk delete emails (move to Trash or permanent deletion).
-    
+
     Args:
         email_ids: Comma-separated list of email IDs to delete
         mailbox: Source mailbox (default: INBOX)
         permanent: If True, permanently delete; if False, move to Trash
-    
+        confirm: Must be True when permanent=True as a safety measure
+
     Returns:
         Dictionary with deletion results
     """
     try:
+        if permanent and not confirm:
+            return {"error": "Safety measure: set confirm=True to permanently delete emails", "email_count": "unknown"}
+
         # Parse email IDs
         id_list = [id.strip() for id in email_ids.split(',') if id.strip()]
-        
+
         if not id_list:
             return {"error": "No valid email IDs provided"}
-        
+
         result = email_client.bulk_delete_emails(id_list, mailbox, permanent)
         
         return {
