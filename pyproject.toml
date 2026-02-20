@@ -26,6 +26,14 @@ ignore = [
     "S113",   # requests timeout - we set timeouts explicitly
 ]
 
+[tool.bandit]
+exclude_dirs = ["venv", ".venv"]
+skips = [
+    "B101",   # assert usage (fine for this project)
+    "B110",   # try-except-pass in MIME parsing - intentional
+    "B112",   # try-except-continue in MIME parsing - intentional
+]
+
 [tool.mypy]
 python_version = "3.12"
 warn_return_any = true
