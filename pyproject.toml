@@ -21,6 +21,8 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "proton-email-server.py" = [
+    "S110",   # try-except-pass in MIME parsing - intentional silent skip of malformed parts
+    "S112",   # try-except-continue in MIME parsing - same reason
     "S113",   # requests timeout - we set timeouts explicitly
 ]
 
