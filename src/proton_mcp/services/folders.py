@@ -88,7 +88,9 @@ class FolderService:
             if not imap.store_flags([uid], "\\Deleted"):
                 logger.warning(
                     "Copied UID %s to '%s' but failed to mark deleted in '%s'",
-                    uid, target_folder, source_folder,
+                    uid,
+                    target_folder,
+                    source_folder,
                 )
                 return False
 
@@ -96,7 +98,8 @@ class FolderService:
             if not imap.expunge():
                 logger.warning(
                     "Copied UID %s to '%s' and marked deleted, but expunge failed",
-                    uid, target_folder,
+                    uid,
+                    target_folder,
                 )
                 return False
 

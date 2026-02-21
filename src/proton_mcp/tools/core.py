@@ -88,9 +88,7 @@ def register_tools(mcp: FastMCP, config: Config) -> None:
             return json.dumps({"error": f"Failed to get email: {e}"})
 
     @mcp.tool()
-    def send_email(
-        to: str, subject: str, body: str, reply_to_id: str | None = None
-    ) -> str:
+    def send_email(to: str, subject: str, body: str, reply_to_id: str | None = None) -> str:
         """Send an email via Proton Mail.
 
         Args:

@@ -2,10 +2,7 @@
 
 from unittest.mock import MagicMock, call, patch
 
-import pytest
-
 from proton_mcp.services.bulk import BulkOperations
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -31,9 +28,14 @@ def _make_raw_email(
     ).encode()
 
 
-def _make_email_dict(uid, subject="Test Subject", from_addr="sender@example.com",
-                     to_addr="recipient@example.com", date="Mon, 01 Jan 2024 12:00:00 +0000",
-                     body="Hello, world!"):
+def _make_email_dict(
+    uid,
+    subject="Test Subject",
+    from_addr="sender@example.com",
+    to_addr="recipient@example.com",
+    date="Mon, 01 Jan 2024 12:00:00 +0000",
+    body="Hello, world!",
+):
     """Build a parsed email dict as returned by IMAPClient."""
     return {
         "id": uid,
@@ -182,9 +184,7 @@ class TestBulkMoveEmails:
     @patch("proton_mcp.services.bulk.IMAPClient")
     def test_connection_exception_returns_error(self, mock_imap_cls, mock_config):
         """If IMAPClient raises an exception, return error dict."""
-        mock_imap_cls.return_value.__enter__ = MagicMock(
-            side_effect=OSError("Connection refused")
-        )
+        mock_imap_cls.return_value.__enter__ = MagicMock(side_effect=OSError("Connection refused"))
 
         bulk = BulkOperations(mock_config)
         result = bulk.bulk_move_emails(["1"], "Archive")
@@ -257,9 +257,7 @@ class TestBulkMarkEmails:
         assert result["flag"] == "\\Flagged"
         assert result["action"] == "added"
         assert result["success"] is True
-        mock_imap.store_flags.assert_called_once_with(
-            ["5", "10", "15"], "\\Flagged", "+FLAGS"
-        )
+        mock_imap.store_flags.assert_called_once_with(["5", "10", "15"], "\\Flagged", "+FLAGS")
 
     @patch("proton_mcp.services.bulk.IMAPClient")
     def test_flag_operation_failure(self, mock_imap_cls, mock_config):
@@ -299,9 +297,7 @@ class TestBulkMarkEmails:
     @patch("proton_mcp.services.bulk.IMAPClient")
     def test_connection_exception_returns_error(self, mock_imap_cls, mock_config):
         """If IMAPClient raises, return error dict."""
-        mock_imap_cls.return_value.__enter__ = MagicMock(
-            side_effect=OSError("Connection refused")
-        )
+        mock_imap_cls.return_value.__enter__ = MagicMock(side_effect=OSError("Connection refused"))
 
         bulk = BulkOperations(mock_config)
         result = bulk.bulk_mark_emails(["1"], "\\Seen")
@@ -393,9 +389,7 @@ class TestBulkDeleteEmails:
     @patch("proton_mcp.services.bulk.IMAPClient")
     def test_permanent_connection_exception(self, mock_imap_cls, mock_config):
         """If connection fails during permanent delete, return error."""
-        mock_imap_cls.return_value.__enter__ = MagicMock(
-            side_effect=OSError("Connection refused")
-        )
+        mock_imap_cls.return_value.__enter__ = MagicMock(side_effect=OSError("Connection refused"))
 
         bulk = BulkOperations(mock_config)
         result = bulk.bulk_delete_emails(["1"], permanent=True)
@@ -495,9 +489,7 @@ class TestBulkGetEmails:
     @patch("proton_mcp.services.bulk.IMAPClient")
     def test_connection_exception_returns_partial(self, mock_imap_cls, mock_config):
         """If connection fails, return whatever was fetched so far (empty)."""
-        mock_imap_cls.return_value.__enter__ = MagicMock(
-            side_effect=OSError("Connection refused")
-        )
+        mock_imap_cls.return_value.__enter__ = MagicMock(side_effect=OSError("Connection refused"))
 
         bulk = BulkOperations(mock_config)
         result = bulk.bulk_get_emails(["1", "2"])
@@ -631,9 +623,7 @@ class TestBulkGetEmailsWithHtml:
     @patch("proton_mcp.services.bulk.IMAPClient")
     def test_connection_exception_returns_empty(self, mock_imap_cls, mock_config):
         """If connection fails, return empty dict."""
-        mock_imap_cls.return_value.__enter__ = MagicMock(
-            side_effect=OSError("Connection refused")
-        )
+        mock_imap_cls.return_value.__enter__ = MagicMock(side_effect=OSError("Connection refused"))
 
         bulk = BulkOperations(mock_config)
         result = bulk.bulk_get_emails_with_html(["1"])

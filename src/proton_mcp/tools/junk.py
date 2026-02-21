@@ -120,22 +120,23 @@ def register_tools(mcp: FastMCP, config: Config) -> None:
             }
             analysis = junk_detector.analyze_email(email_data)
 
-            return json.dumps({
-                "email": {
-                    "id": full_email.id,
-                    "subject": full_email.subject,
-                    "from": full_email.from_addr,
-                    "date": full_email.date,
+            return json.dumps(
+                {
+                    "email": {
+                        "id": full_email.id,
+                        "subject": full_email.subject,
+                        "from": full_email.from_addr,
+                        "date": full_email.date,
+                    },
+                    "junk_analysis": analysis.to_dict(),
                 },
-                "junk_analysis": analysis.to_dict(),
-            }, indent=2)
+                indent=2,
+            )
         except Exception as e:
             return json.dumps({"error": f"Failed to analyze email: {e}"})
 
     @mcp.tool()
-    def create_junk_rule(
-        name: str, field: str, pattern: str, score: int = 2
-    ) -> str:
+    def create_junk_rule(name: str, field: str, pattern: str, score: int = 2) -> str:
         """Create a custom junk detection rule.
 
         Args:
@@ -149,11 +150,14 @@ def register_tools(mcp: FastMCP, config: Config) -> None:
         """
         try:
             rule = junk_detector.create_rule(name, field, pattern, score)
-            return json.dumps({
-                "status": "success",
-                "message": f"Junk rule '{name}' created",
-                "rule": rule.to_dict(),
-            }, indent=2)
+            return json.dumps(
+                {
+                    "status": "success",
+                    "message": f"Junk rule '{name}' created",
+                    "rule": rule.to_dict(),
+                },
+                indent=2,
+            )
         except Exception as e:
             return json.dumps({"status": "error", "message": f"Failed to create junk rule: {e}"})
 
@@ -197,11 +201,13 @@ def register_tools(mcp: FastMCP, config: Config) -> None:
 
             success = junk_detector.update_rule(rule_id, **updates)
             if success:
-                return json.dumps({
-                    "status": "success",
-                    "message": f"Junk rule '{rule_id}' updated",
-                    "updates": updates,
-                })
+                return json.dumps(
+                    {
+                        "status": "success",
+                        "message": f"Junk rule '{rule_id}' updated",
+                        "updates": updates,
+                    }
+                )
             return json.dumps({"status": "error", "message": f"Rule '{rule_id}' not found"})
         except Exception as e:
             return json.dumps({"status": "error", "message": f"Failed to update junk rule: {e}"})

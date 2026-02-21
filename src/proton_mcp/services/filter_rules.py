@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from proton_mcp.config import Config
@@ -77,7 +77,7 @@ class FilterRuleEngine:
             conditions=dict(conditions),
             actions=dict(actions),
             enabled=enabled,
-            created_at=datetime.now(tz=timezone.utc).isoformat(),
+            created_at=datetime.now(tz=UTC).isoformat(),
             last_applied=None,
             emails_processed=0,
         )
@@ -167,8 +167,8 @@ class FilterRuleEngine:
                 try:
                     email_date = datetime.fromisoformat(email_date_str)
                     if email_date.tzinfo is None:
-                        email_date = email_date.replace(tzinfo=timezone.utc)
-                    age_days = (datetime.now(tz=timezone.utc) - email_date).days
+                        email_date = email_date.replace(tzinfo=UTC)
+                    age_days = (datetime.now(tz=UTC) - email_date).days
                     if age_days < int(value):
                         return False
                 except (ValueError, TypeError):
@@ -182,8 +182,8 @@ class FilterRuleEngine:
                 try:
                     email_date = datetime.fromisoformat(email_date_str)
                     if email_date.tzinfo is None:
-                        email_date = email_date.replace(tzinfo=timezone.utc)
-                    age_days = (datetime.now(tz=timezone.utc) - email_date).days
+                        email_date = email_date.replace(tzinfo=UTC)
+                    age_days = (datetime.now(tz=UTC) - email_date).days
                     if age_days > int(value):
                         return False
                 except (ValueError, TypeError):
@@ -196,15 +196,25 @@ class FilterRuleEngine:
     def valid_conditions() -> list[str]:
         """Return list of valid condition keys."""
         return [
-            "from", "to", "subject_contains", "subject_equals",
-            "body_contains", "sender_domain", "has_attachments",
-            "older_than_days", "newer_than_days",
+            "from",
+            "to",
+            "subject_contains",
+            "subject_equals",
+            "body_contains",
+            "sender_domain",
+            "has_attachments",
+            "older_than_days",
+            "newer_than_days",
         ]
 
     @staticmethod
     def valid_actions() -> list[str]:
         """Return list of valid action keys."""
         return [
-            "move_to_folder", "mark_as_read", "mark_as_important",
-            "delete", "forward_to", "auto_reply",
+            "move_to_folder",
+            "mark_as_read",
+            "mark_as_important",
+            "delete",
+            "forward_to",
+            "auto_reply",
         ]

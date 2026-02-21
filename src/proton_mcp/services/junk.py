@@ -377,9 +377,7 @@ class JunkDetector:
             True if the rule was found and deleted, False otherwise.
         """
         original_len = len(self._config.custom_patterns)
-        self._config.custom_patterns = [
-            r for r in self._config.custom_patterns if r.id != rule_id
-        ]
+        self._config.custom_patterns = [r for r in self._config.custom_patterns if r.id != rule_id]
         if len(self._config.custom_patterns) == original_len:
             return False
 

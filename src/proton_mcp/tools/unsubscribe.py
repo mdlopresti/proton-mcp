@@ -42,19 +42,20 @@ def register_tools(mcp: FastMCP, config: Config) -> None:
                 return json.dumps({"error": "Email not found"})
 
             methods = unsub_service.find_unsubscribe_links(email_data)
-            return json.dumps({
-                "email_id": email_id,
-                "total_methods": len(methods),
-                "has_one_click": any(m.one_click for m in methods),
-                "unsubscribe_methods": [m.to_dict() for m in methods],
-            }, indent=2)
+            return json.dumps(
+                {
+                    "email_id": email_id,
+                    "total_methods": len(methods),
+                    "has_one_click": any(m.one_click for m in methods),
+                    "unsubscribe_methods": [m.to_dict() for m in methods],
+                },
+                indent=2,
+            )
         except Exception as e:
             return json.dumps({"error": f"Failed to find unsubscribe links: {e}"})
 
     @mcp.tool()
-    def unsubscribe_from_email(
-        email_id: str, mailbox: str = "INBOX", confirm: bool = False
-    ) -> str:
+    def unsubscribe_from_email(email_id: str, mailbox: str = "INBOX", confirm: bool = False) -> str:
         """Unsubscribe from a mailing list using links found in an email.
 
         Args:
@@ -67,10 +68,12 @@ def register_tools(mcp: FastMCP, config: Config) -> None:
         """
         try:
             if not confirm:
-                return json.dumps({
-                    "error": "Safety measure: set confirm=True to execute unsubscribe",
-                    "message": "Use find_unsubscribe_links first to see available methods",
-                })
+                return json.dumps(
+                    {
+                        "error": "Safety measure: set confirm=True to execute unsubscribe",
+                        "message": "Use find_unsubscribe_links first to see available methods",
+                    }
+                )
 
             full_emails = bulk_ops.bulk_get_emails_with_html([email_id], mailbox)
             email_data = full_emails.get(email_id)
@@ -85,24 +88,25 @@ def register_tools(mcp: FastMCP, config: Config) -> None:
             method = next((m for m in methods if m.one_click), methods[0])
             success = unsub_service.execute_unsubscribe(method)
 
-            return json.dumps({
-                "email_info": {
-                    "id": email_data.get("id", email_id),
-                    "subject": email_data.get("subject", ""),
-                    "from": email_data.get("from", ""),
+            return json.dumps(
+                {
+                    "email_info": {
+                        "id": email_data.get("id", email_id),
+                        "subject": email_data.get("subject", ""),
+                        "from": email_data.get("from", ""),
+                    },
+                    "unsubscribe_result": {
+                        "success": success,
+                        "method_used": method.to_dict(),
+                    },
                 },
-                "unsubscribe_result": {
-                    "success": success,
-                    "method_used": method.to_dict(),
-                },
-            }, indent=2)
+                indent=2,
+            )
         except Exception as e:
             return json.dumps({"error": f"Failed to unsubscribe: {e}"})
 
     @mcp.tool()
-    def bulk_find_unsubscribe_opportunities(
-        mailbox: str = "INBOX", max_emails: int = 100
-    ) -> str:
+    def bulk_find_unsubscribe_opportunities(mailbox: str = "INBOX", max_emails: int = 100) -> str:
         """Scan recent emails to find unsubscribe opportunities from mailing lists.
 
         Args:
@@ -119,9 +123,9 @@ def register_tools(mcp: FastMCP, config: Config) -> None:
 
             summaries = email_service.search_emails(query, mailbox, max_emails)
             if not summaries:
-                return json.dumps({
-                    "summary": {"emails_analyzed": 0, "unsubscribe_opportunities": 0, "one_click_available": 0}
-                })
+                return json.dumps(
+                    {"summary": {"emails_analyzed": 0, "unsubscribe_opportunities": 0, "one_click_available": 0}}
+                )
 
             email_ids = [s.id for s in summaries]
             full_emails = bulk_ops.bulk_get_emails_with_html(email_ids, mailbox)
@@ -138,14 +142,16 @@ def register_tools(mcp: FastMCP, config: Config) -> None:
                 try:
                     methods = unsub_service.find_unsubscribe_links(email_data)
                     if methods:
-                        opportunities.append({
-                            **summary.to_dict(),
-                            "unsubscribe_info": {
-                                "total_methods": len(methods),
-                                "has_one_click": any(m.one_click for m in methods),
-                                "unsubscribe_methods": [m.to_dict() for m in methods],
-                            },
-                        })
+                        opportunities.append(
+                            {
+                                **summary.to_dict(),
+                                "unsubscribe_info": {
+                                    "total_methods": len(methods),
+                                    "has_one_click": any(m.one_click for m in methods),
+                                    "unsubscribe_methods": [m.to_dict() for m in methods],
+                                },
+                            }
+                        )
                 except Exception as e:
                     logger.warning("Failed to analyze email %s: %s", summary.id, e)
                     continue
@@ -154,9 +160,7 @@ def register_tools(mcp: FastMCP, config: Config) -> None:
                 "summary": {
                     "emails_analyzed": processed,
                     "unsubscribe_opportunities": len(opportunities),
-                    "one_click_available": sum(
-                        1 for o in opportunities if o["unsubscribe_info"]["has_one_click"]
-                    ),
+                    "one_click_available": sum(1 for o in opportunities if o["unsubscribe_info"]["has_one_click"]),
                 }
             }
 
@@ -165,9 +169,7 @@ def register_tools(mcp: FastMCP, config: Config) -> None:
             return json.dumps({"error": f"Failed to find unsubscribe opportunities: {e}"})
 
     @mcp.tool()
-    def get_mailing_list_senders(
-        mailbox: str = "INBOX", max_emails: int = 200
-    ) -> str:
+    def get_mailing_list_senders(mailbox: str = "INBOX", max_emails: int = 200) -> str:
         """Identify frequent senders that might be mailing lists.
 
         Args:
@@ -201,21 +203,25 @@ def register_tools(mcp: FastMCP, config: Config) -> None:
             mailing_lists: list[dict[str, Any]] = []
             for sender, data in sender_data.items():
                 if data["count"] >= 2:
-                    is_likely = any([
-                        "newsletter" in sender.lower(),
-                        "noreply" in sender.lower(),
-                        "marketing" in sender.lower(),
-                        "updates" in sender.lower(),
-                        "notifications" in sender.lower(),
-                        data["count"] >= 5,
-                    ])
-                    mailing_lists.append({
-                        "sender": sender,
-                        "email_count": data["count"],
-                        "likely_mailing_list": is_likely,
-                        "latest_date": data["latest_date"],
-                        "sample_subjects": data["subjects"][:3],
-                    })
+                    is_likely = any(
+                        [
+                            "newsletter" in sender.lower(),
+                            "noreply" in sender.lower(),
+                            "marketing" in sender.lower(),
+                            "updates" in sender.lower(),
+                            "notifications" in sender.lower(),
+                            data["count"] >= 5,
+                        ]
+                    )
+                    mailing_lists.append(
+                        {
+                            "sender": sender,
+                            "email_count": data["count"],
+                            "likely_mailing_list": is_likely,
+                            "latest_date": data["latest_date"],
+                            "sample_subjects": data["subjects"][:3],
+                        }
+                    )
 
             mailing_lists.sort(key=lambda x: x["email_count"], reverse=True)
             return json.dumps(mailing_lists, indent=2)
@@ -260,9 +266,7 @@ def register_tools(mcp: FastMCP, config: Config) -> None:
             return json.dumps({"status": "error", "message": f"Failed to remove preference: {e}"})
 
     @mcp.tool()
-    def add_detection_pattern(
-        name: str, pattern: str, pattern_type: str = "tracker_domain"
-    ) -> str:
+    def add_detection_pattern(name: str, pattern: str, pattern_type: str = "tracker_domain") -> str:
         """Add a detection pattern for tracker URLs used in unsubscribe links.
 
         Args:
@@ -275,11 +279,14 @@ def register_tools(mcp: FastMCP, config: Config) -> None:
         """
         try:
             result = unsub_service.add_detection_pattern(name, pattern, pattern_type)
-            return json.dumps({
-                "status": "success",
-                "message": f"Detection pattern '{name}' added",
-                "pattern": result.to_dict(),
-            }, indent=2)
+            return json.dumps(
+                {
+                    "status": "success",
+                    "message": f"Detection pattern '{name}' added",
+                    "pattern": result.to_dict(),
+                },
+                indent=2,
+            )
         except Exception as e:
             return json.dumps({"status": "error", "message": f"Failed to add detection pattern: {e}"})
 

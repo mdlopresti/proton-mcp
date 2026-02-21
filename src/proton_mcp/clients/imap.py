@@ -55,7 +55,7 @@ class IMAPClient:
             logger.error("Failed to select mailbox '%s': %s", mailbox, response)
             return []
 
-        status, data = self._mail.uid("search", None, query)
+        status, data = self._mail.uid("search", "", query)
         if status != "OK":
             return []
 
@@ -102,9 +102,7 @@ class IMAPClient:
 
         return None
 
-    def fetch_batch(
-        self, uids: list[str], mailbox: str = "INBOX"
-    ) -> dict[str, dict[str, Any]]:
+    def fetch_batch(self, uids: list[str], mailbox: str = "INBOX") -> dict[str, dict[str, Any]]:
         """Fetch multiple emails by UIDs."""
         assert self._mail is not None, "Not connected — use as context manager"
         if not uids:
@@ -138,9 +136,7 @@ class IMAPClient:
                         header_str = header.decode("ascii", errors="ignore")
                         fetched_uid = self._extract_uid_from_header(header_str)
                         if fetched_uid and fetched_uid in uid_set_remaining:
-                            emails[fetched_uid] = self._parse_email(
-                                fetched_uid, raw_email
-                            )
+                            emails[fetched_uid] = self._parse_email(fetched_uid, raw_email)
                             uid_set_remaining.discard(fetched_uid)
 
         except Exception:
@@ -196,9 +192,7 @@ class IMAPClient:
             return False
         return True
 
-    def store_flags(
-        self, uids: list[str], flags: str, action: str = "+FLAGS"
-    ) -> bool:
+    def store_flags(self, uids: list[str], flags: str, action: str = "+FLAGS") -> bool:
         """Set/remove flags on emails."""
         assert self._mail is not None, "Not connected — use as context manager"
         uid_set = ",".join(uids)
@@ -206,7 +200,10 @@ class IMAPClient:
         if status != "OK":
             logger.error(
                 "Failed to store flags %s %s on UIDs %s: %s",
-                action, flags, uid_set, response,
+                action,
+                flags,
+                uid_set,
+                response,
             )
             return False
         return True

@@ -2,18 +2,16 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from proton_mcp.models.email import EmailSummary, FullEmail
-from proton_mcp.services.email_ops import EmailService, _BODY_PREVIEW_LENGTH
-
+from proton_mcp.services.email_ops import _BODY_PREVIEW_LENGTH, EmailService
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _email_dict(
     uid: str = "100",
@@ -312,7 +310,7 @@ class TestGetFullEmail:
         assert result.id == "7"
         assert result.subject == "Subj"
         assert result.from_addr == "alice@example.com"  # mapped from "from"
-        assert result.to_addr == "bob@example.com"      # mapped from "to"
+        assert result.to_addr == "bob@example.com"  # mapped from "to"
         assert result.date == "Wed, 03 Jan 2024 10:00:00 +0000"
         assert result.body == "Body content"
 
@@ -425,9 +423,7 @@ class TestSendEmail:
         service = EmailService(mock_config)
         service.send_email("to@example.com", "Subject", "Body")
 
-        mock_smtp.send_email.assert_called_once_with(
-            "to@example.com", "Subject", "Body", None
-        )
+        mock_smtp.send_email.assert_called_once_with("to@example.com", "Subject", "Body", None)
 
     @patch("proton_mcp.services.email_ops.SMTPClient")
     def test_smtp_client_used_as_context_manager(self, mock_smtp_cls, mock_config):
@@ -498,7 +494,7 @@ class TestGetRecentEmails:
         # 168 hours = 7 days
         service.get_recent_emails(hours=168)
 
-        expected_date = (datetime.now(tz=timezone.utc) - timedelta(hours=168)).strftime("%d-%b-%Y")
+        expected_date = (datetime.now(tz=UTC) - timedelta(hours=168)).strftime("%d-%b-%Y")
         expected_query = f"SINCE {expected_date}"
 
         mock_imap.search.assert_called_once_with(expected_query, "INBOX")
@@ -573,7 +569,7 @@ class TestGetRecentEmails:
         service = EmailService(mock_config)
         service.get_recent_emails()
 
-        expected_date = (datetime.now(tz=timezone.utc) - timedelta(hours=24)).strftime("%d-%b-%Y")
+        expected_date = (datetime.now(tz=UTC) - timedelta(hours=24)).strftime("%d-%b-%Y")
         expected_query = f"SINCE {expected_date}"
 
         mock_imap.search.assert_called_once_with(expected_query, "INBOX")

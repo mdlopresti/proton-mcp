@@ -30,7 +30,7 @@ class TestSMTPClientContextManager:
         mock_server = MagicMock()
         mock_smtp_cls.return_value = mock_server
 
-        with SMTPClient(mock_config) as client:
+        with SMTPClient(mock_config):
             pass
 
         mock_server.quit.assert_called_once()

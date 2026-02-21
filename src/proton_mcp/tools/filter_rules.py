@@ -48,11 +48,14 @@ def register_tools(mcp: FastMCP, config: Config) -> None:
 
         try:
             rule = filter_engine.create_rule(name, conditions_dict, actions_dict, enabled)
-            return json.dumps({
-                "status": "success",
-                "message": f"Filter rule '{name}' created successfully",
-                "rule": rule.to_dict(),
-            }, indent=2)
+            return json.dumps(
+                {
+                    "status": "success",
+                    "message": f"Filter rule '{name}' created successfully",
+                    "rule": rule.to_dict(),
+                },
+                indent=2,
+            )
         except ValueError as e:
             return json.dumps({"status": "error", "message": str(e)})
         except Exception as e:
@@ -112,11 +115,14 @@ def register_tools(mcp: FastMCP, config: Config) -> None:
 
             success = filter_engine.update_rule(rule_id, **updates)
             if success:
-                return json.dumps({
-                    "status": "success",
-                    "message": f"Filter rule '{rule_id}' updated successfully",
-                    "updates": updates,
-                }, indent=2)
+                return json.dumps(
+                    {
+                        "status": "success",
+                        "message": f"Filter rule '{rule_id}' updated successfully",
+                        "updates": updates,
+                    },
+                    indent=2,
+                )
             return json.dumps({"status": "error", "message": f"Rule '{rule_id}' not found"})
         except json.JSONDecodeError as e:
             return json.dumps({"status": "error", "message": f"Invalid JSON format: {e}"})
@@ -188,38 +194,49 @@ def register_tools(mcp: FastMCP, config: Config) -> None:
                 # Execute queued actions in bulk
                 for folder, uids in move_queue.items():
                     result = bulk_ops.bulk_move_emails(uids, folder, mailbox)
-                    actions_log.append({
-                        "action": "move",
-                        "target": folder,
-                        "count": result.get("moved", 0),
-                    })
+                    actions_log.append(
+                        {
+                            "action": "move",
+                            "target": folder,
+                            "count": result.get("moved", 0),
+                        }
+                    )
 
                 if mark_read_queue:
                     result = bulk_ops.bulk_mark_emails(mark_read_queue, "\\Seen", mailbox)
-                    actions_log.append({
-                        "action": "mark_read",
-                        "count": result.get("marked", 0),
-                    })
+                    actions_log.append(
+                        {
+                            "action": "mark_read",
+                            "count": result.get("marked", 0),
+                        }
+                    )
 
                 if mark_important_queue:
                     result = bulk_ops.bulk_mark_emails(mark_important_queue, "\\Flagged", mailbox)
-                    actions_log.append({
-                        "action": "mark_important",
-                        "count": result.get("marked", 0),
-                    })
+                    actions_log.append(
+                        {
+                            "action": "mark_important",
+                            "count": result.get("marked", 0),
+                        }
+                    )
 
                 if delete_queue:
                     result = bulk_ops.bulk_delete_emails(delete_queue, mailbox)
-                    actions_log.append({
-                        "action": "delete",
-                        "count": result.get("deleted", 0),
-                    })
+                    actions_log.append(
+                        {
+                            "action": "delete",
+                            "count": result.get("deleted", 0),
+                        }
+                    )
 
-            return json.dumps({
-                "emails_processed": len(email_ids),
-                "rules_applied": total_actions,
-                "rule_match_counts": rule_stats,
-                "actions_taken": actions_log,
-            }, indent=2)
+            return json.dumps(
+                {
+                    "emails_processed": len(email_ids),
+                    "rules_applied": total_actions,
+                    "rule_match_counts": rule_stats,
+                    "actions_taken": actions_log,
+                },
+                indent=2,
+            )
         except Exception as e:
             return json.dumps({"error": f"Failed to apply filter rules: {e}"})

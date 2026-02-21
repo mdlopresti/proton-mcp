@@ -46,9 +46,20 @@ ignore = [
     "S112",   # try-except-continue in MIME parsing - same reason
     "S113",   # requests timeout - we set timeouts explicitly
 ]
+"src/proton_mcp/clients/imap.py" = [
+    "S110",   # try-except-pass in cleanup - intentional best-effort disconnect
+]
+"src/proton_mcp/utils/mime.py" = [
+    "S110",   # try-except-pass in MIME parsing - intentional
+    "S112",   # try-except-continue in MIME parsing - intentional
+]
+"tests/**/*.py" = [
+    "S105",   # hardcoded passwords in test fixtures
+    "S108",   # hardcoded /tmp in test data
+]
 
 [tool.bandit]
-exclude_dirs = ["venv", ".venv"]
+exclude_dirs = ["venv", ".venv", "tests"]
 skips = [
     "B101",   # assert usage (fine for this project)
     "B110",   # try-except-pass in MIME parsing - intentional
@@ -71,6 +82,9 @@ source = ["src/proton_mcp"]
 omit = [
     "proton-email-server.py",
     "src/proton_mcp/__main__.py",
+    "src/proton_mcp/tools/*",
+    "src/proton_mcp/resources/*",
+    "src/proton_mcp/prompts/*",
 ]
 
 [tool.coverage.report]

@@ -1,12 +1,10 @@
 """Shared test fixtures for proton_mcp tests."""
 
-import os
 import tempfile
 from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
-
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
 

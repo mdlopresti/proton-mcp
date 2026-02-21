@@ -45,13 +45,9 @@ class Config:
         password = os.getenv("PROTON_BRIDGE_PASSWORD", "")
 
         if not email:
-            raise ValueError(
-                "PROTON_EMAIL environment variable is required but not set"
-            )
+            raise ValueError("PROTON_EMAIL environment variable is required but not set")
         if not password:
-            raise ValueError(
-                "PROTON_BRIDGE_PASSWORD environment variable is required but not set"
-            )
+            raise ValueError("PROTON_BRIDGE_PASSWORD environment variable is required but not set")
 
         default_data_dir = os.path.dirname(os.path.abspath(__file__))
 

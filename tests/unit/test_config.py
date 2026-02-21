@@ -8,9 +8,7 @@ import pytest
 from proton_mcp.config import Config
 
 # The directory where config.py lives, used to verify the default data_dir.
-_CONFIG_MODULE_DIR = os.path.dirname(
-    os.path.abspath(Config.__module__.replace(".", os.sep) + ".py")
-)
+_CONFIG_MODULE_DIR = os.path.dirname(os.path.abspath(Config.__module__.replace(".", os.sep) + ".py"))
 
 
 def _required_env(**overrides: str) -> dict[str, str]:
@@ -65,8 +63,7 @@ class TestConfigFromEnv:
             monkeypatch.setenv(key, value)
 
         # Ensure optional vars are NOT in the environment.
-        for key in ("BRIDGE_IMAP_HOST", "BRIDGE_IMAP_PORT",
-                     "BRIDGE_SMTP_HOST", "BRIDGE_SMTP_PORT", "PROTON_DATA_DIR"):
+        for key in ("BRIDGE_IMAP_HOST", "BRIDGE_IMAP_PORT", "BRIDGE_SMTP_HOST", "BRIDGE_SMTP_PORT", "PROTON_DATA_DIR"):
             monkeypatch.delenv(key, raising=False)
 
         cfg = Config.from_env()
@@ -121,18 +118,6 @@ class TestConfigFromEnv:
 
         cfg = Config.from_env()
 
-        expected = os.path.dirname(
-            os.path.abspath(
-                os.path.join(
-                    os.path.dirname(__file__),
-                    "..",
-                    "..",
-                    "src",
-                    "proton_mcp",
-                    "config.py",
-                )
-            )
-        )
         # Both should resolve to the same proton_mcp package directory.
         assert os.path.isdir(cfg.data_dir)
         assert os.path.basename(cfg.data_dir) == "proton_mcp"
@@ -151,9 +136,7 @@ class TestConfigFromEnv:
     @patch("proton_mcp.config.load_dotenv")
     def test_port_values_are_int(self, mock_dotenv, monkeypatch):
         """Port values are converted from string env vars to int."""
-        for key, value in _full_env(
-            BRIDGE_IMAP_PORT="2143", BRIDGE_SMTP_PORT="2025"
-        ).items():
+        for key, value in _full_env(BRIDGE_IMAP_PORT="2143", BRIDGE_SMTP_PORT="2025").items():
             monkeypatch.setenv(key, value)
 
         cfg = Config.from_env()

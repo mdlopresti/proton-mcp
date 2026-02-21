@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from proton_mcp.clients.imap import IMAPClient
 from proton_mcp.clients.smtp import SMTPClient
@@ -106,7 +106,7 @@ class EmailService:
         include_body: bool = True,
     ) -> list[EmailSummary]:
         """Get emails from the last N hours."""
-        since = datetime.now(tz=timezone.utc) - timedelta(hours=hours)
+        since = datetime.now(tz=UTC) - timedelta(hours=hours)
         date_str = since.strftime("%d-%b-%Y")
         query = f"SINCE {date_str}"
         return self.search_emails(query, mailbox, max_results, include_body)

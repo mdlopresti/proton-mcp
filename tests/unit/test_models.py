@@ -1,7 +1,5 @@
 """Comprehensive tests for email and configuration data models."""
 
-import pytest
-
 from proton_mcp.models.email import (
     DetectionPattern,
     EmailSummary,
@@ -15,7 +13,6 @@ from proton_mcp.models.email import (
     UnsubscribeMethod,
     UnsubscribePreference,
 )
-
 
 # ---------------------------------------------------------------------------
 # EmailSummary

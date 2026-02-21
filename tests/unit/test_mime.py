@@ -6,15 +6,12 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
 
-import pytest
-
 from proton_mcp.utils.mime import (
     decode_mime_words,
     get_email_body,
     get_html_body,
     get_text_and_html,
 )
-
 
 FIXTURES_DIR = Path(__file__).parent.parent / "fixtures" / "sample_emails"
 
@@ -283,6 +280,7 @@ class TestMimeExceptionHandling:
         # This should work normally, but let's test the exception path
         # by mocking get_payload to raise
         from unittest.mock import patch
+
         with patch.object(msg, "get_payload", side_effect=Exception("fail")):
             html = get_html_body(msg)
         assert html == ""
@@ -313,6 +311,7 @@ class TestMimeExceptionHandling:
         msg["Content-Type"] = "text/plain"
         msg.set_payload("test")
         from unittest.mock import patch
+
         with patch.object(msg, "get_payload", side_effect=Exception("fail")):
             text, html = get_text_and_html(msg)
         assert text == ""
@@ -326,7 +325,6 @@ class TestMimeExceptionHandling:
         from unittest.mock import patch
 
         call_count = 0
-        original_get_payload = msg.get_payload
 
         def side_effect(decode=False):
             nonlocal call_count

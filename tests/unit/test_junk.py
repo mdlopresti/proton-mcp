@@ -19,9 +19,8 @@ from pathlib import Path
 
 import pytest
 
-from proton_mcp.models.email import JunkAnalysis, JunkConfig, JunkRule
+from proton_mcp.models.email import JunkAnalysis
 from proton_mcp.services.junk import JunkDetector
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -95,46 +94,32 @@ class TestKnownSpamDetection:
         assert result.junk_score >= 2
 
     def test_suspicious_tld_sender(self, detector: JunkDetector):
-        result = detector.analyze_email(
-            _make_email(from_addr="noreply@phishing.tk", subject="Hello")
-        )
+        result = detector.analyze_email(_make_email(from_addr="noreply@phishing.tk", subject="Hello"))
         assert result.junk_score >= 1
         assert any("sender pattern" in i.lower() for i in result.indicators)
 
     def test_suspicious_ml_tld(self, detector: JunkDetector):
-        result = detector.analyze_email(
-            _make_email(from_addr="offers@deals.ml", subject="Hello")
-        )
+        result = detector.analyze_email(_make_email(from_addr="offers@deals.ml", subject="Hello"))
         assert result.junk_score >= 1
 
     def test_suspicious_ga_tld(self, detector: JunkDetector):
-        result = detector.analyze_email(
-            _make_email(from_addr="spam@bad.ga", subject="Hello")
-        )
+        result = detector.analyze_email(_make_email(from_addr="spam@bad.ga", subject="Hello"))
         assert result.junk_score >= 1
 
     def test_body_click_here_now(self, detector: JunkDetector):
-        result = detector.analyze_email(
-            _make_email(body="Please click here now to claim your prize")
-        )
+        result = detector.analyze_email(_make_email(body="Please click here now to claim your prize"))
         assert result.junk_score >= 2
 
     def test_body_verify_account(self, detector: JunkDetector):
-        result = detector.analyze_email(
-            _make_email(body="You must verify account immediately or it will be closed")
-        )
+        result = detector.analyze_email(_make_email(body="You must verify account immediately or it will be closed"))
         assert result.junk_score >= 2
 
     def test_body_inheritance_million(self, detector: JunkDetector):
-        result = detector.analyze_email(
-            _make_email(body="You have an inheritance of 5 million dollars")
-        )
+        result = detector.analyze_email(_make_email(body="You have an inheritance of 5 million dollars"))
         assert result.junk_score >= 2
 
     def test_body_bitcoin_investment(self, detector: JunkDetector):
-        result = detector.analyze_email(
-            _make_email(body="Amazing bitcoin investment opportunity awaits")
-        )
+        result = detector.analyze_email(_make_email(body="Amazing bitcoin investment opportunity awaits"))
         assert result.junk_score >= 2
 
     def test_excessive_caps(self, detector: JunkDetector):
@@ -156,9 +141,7 @@ class TestKnownSpamDetection:
         assert result.is_likely_junk
 
     def test_security_sender_pattern(self, detector: JunkDetector):
-        result = detector.analyze_email(
-            _make_email(from_addr="security@phishing-site.com", subject="Alert")
-        )
+        result = detector.analyze_email(_make_email(from_addr="security@phishing-site.com", subject="Alert"))
         assert result.junk_score >= 1
 
 
@@ -293,9 +276,7 @@ class TestWhitelist:
         """If a sender is both whitelisted and blacklisted, whitelist wins."""
         detector.add_whitelist_entry("dual@example.com", entry_type="sender")
         detector.add_blacklist_entry("dual@example.com", entry_type="sender")
-        result = detector.analyze_email(
-            _make_email(from_addr="dual@example.com", subject="Test")
-        )
+        result = detector.analyze_email(_make_email(from_addr="dual@example.com", subject="Test"))
         assert result.junk_score == 0
         assert not result.is_likely_junk
 
@@ -384,23 +365,19 @@ class TestCustomPatterns:
             pattern=r"bitcoin.*guaranteed.*return",
             score=3,
         )
-        result = detector.analyze_email(
-            _make_email(subject="Bitcoin guaranteed return of 500%")
-        )
+        result = detector.analyze_email(_make_email(subject="Bitcoin guaranteed return of 500%"))
         assert result.junk_score >= 3
         assert any("Crypto scam" in i for i in result.indicators)
 
     def test_disabled_rule_is_skipped(self, detector: JunkDetector):
-        rule = detector.create_rule(
+        detector.create_rule(
             name="Disabled rule",
             field="subject",
             pattern=r"test-pattern-xyz",
             score=5,
             enabled=False,
         )
-        result = detector.analyze_email(
-            _make_email(subject="This has test-pattern-xyz in it")
-        )
+        result = detector.analyze_email(_make_email(subject="This has test-pattern-xyz in it"))
         # The disabled rule should contribute nothing
         assert result.junk_score == 0
 
@@ -411,9 +388,7 @@ class TestCustomPatterns:
             pattern=r"multi.*level.*marketing",
             score=4,
         )
-        result = detector.analyze_email(
-            _make_email(body="Join our multi level marketing empire today")
-        )
+        result = detector.analyze_email(_make_email(body="Join our multi level marketing empire today"))
         assert result.junk_score >= 4
 
     def test_custom_rule_sender_field(self, detector: JunkDetector):
@@ -423,9 +398,7 @@ class TestCustomPatterns:
             pattern=r"@evil-corp\.com$",
             score=3,
         )
-        result = detector.analyze_email(
-            _make_email(from_addr="contact@evil-corp.com")
-        )
+        result = detector.analyze_email(_make_email(from_addr="contact@evil-corp.com"))
         assert result.junk_score >= 3
 
     def test_invalid_regex_in_custom_rule_is_skipped(self, detector: JunkDetector):
@@ -442,9 +415,7 @@ class TestCustomPatterns:
 
     def test_sample_config_custom_pattern(self, detector_with_sample: JunkDetector):
         """Sample config has a 'Crypto scam subject' rule."""
-        result = detector_with_sample.analyze_email(
-            _make_email(subject="Bitcoin guaranteed return of 1000%")
-        )
+        result = detector_with_sample.analyze_email(_make_email(subject="Bitcoin guaranteed return of 1000%"))
         assert any("Crypto scam" in i for i in result.indicators)
 
 
@@ -467,9 +438,7 @@ class TestThresholds:
         cfg.thresholds = {"low": 5, "medium": 10, "high": 20}
         detector.save_config(cfg)
 
-        result = detector.analyze_email(
-            _make_email(subject="Congratulations you won a prize")
-        )
+        result = detector.analyze_email(_make_email(subject="Congratulations you won a prize"))
         # Score of 2 is below new "low" of 5
         assert result.likelihood == "unlikely"
         assert not result.is_likely_junk
@@ -480,9 +449,7 @@ class TestThresholds:
         cfg.thresholds = {"low": 0, "medium": 0, "high": 1}
         detector.save_config(cfg)
 
-        result = detector.analyze_email(
-            _make_email(from_addr="user@suspicious.ga", subject="Hello")
-        )
+        result = detector.analyze_email(_make_email(from_addr="user@suspicious.ga", subject="Hello"))
         # Score of 1 from .ga TLD
         assert result.likelihood == "high"
 
@@ -492,9 +459,7 @@ class TestThresholds:
         cfg.thresholds = {"low": 1, "medium": 100, "high": 200}
         detector.save_config(cfg)
 
-        result = detector.analyze_email(
-            _make_email(subject="Congratulations you won (Free money)")
-        )
+        result = detector.analyze_email(_make_email(subject="Congratulations you won (Free money)"))
         # Score >= 4 but medium threshold is 100
         assert not result.is_likely_junk
 
@@ -621,7 +586,7 @@ class TestConfigPersistence:
         assert "spam-domain.tk" in cfg.blacklist["domains"]
 
     def test_raw_json_matches_expected_default(self, mock_config):
-        det = JunkDetector(mock_config)
+        JunkDetector(mock_config)
         config_path = os.path.join(mock_config.data_dir, "junk_config.json")
         with open(config_path) as f:
             data = json.load(f)
@@ -665,15 +630,11 @@ class TestEdgeCases:
         assert any("capital letters" in i.lower() for i in result.indicators)
 
     def test_unicode_subject(self, detector: JunkDetector):
-        result = detector.analyze_email(
-            _make_email(subject="Bonjour! Votre commande est prete")
-        )
+        result = detector.analyze_email(_make_email(subject="Bonjour! Votre commande est prete"))
         assert result.likelihood == "unlikely"
 
     def test_unicode_body(self, detector: JunkDetector):
-        result = detector.analyze_email(
-            _make_email(body="Hola, tu pedido esta listo para recoger")
-        )
+        result = detector.analyze_email(_make_email(body="Hola, tu pedido esta listo para recoger"))
         assert result.likelihood == "unlikely"
 
     def test_email_id_preserved_in_result(self, detector: JunkDetector):
@@ -706,9 +667,7 @@ class TestEdgeCases:
         assert isinstance(result, JunkAnalysis)
 
     def test_result_to_dict_roundtrip(self, detector: JunkDetector):
-        result = detector.analyze_email(
-            _make_email(subject="Congratulations you won a prize", email_id="99")
-        )
+        result = detector.analyze_email(_make_email(subject="Congratulations you won a prize", email_id="99"))
         d = result.to_dict()
         rebuilt = JunkAnalysis.from_dict(d)
         assert rebuilt.junk_score == result.junk_score
@@ -804,7 +763,5 @@ class TestRuleCrud:
     def test_multiple_rules_all_scored(self, detector: JunkDetector):
         detector.create_rule("R1", "subject", r"multi-rule-a", score=1)
         detector.create_rule("R2", "subject", r"multi-rule-b", score=2)
-        result = detector.analyze_email(
-            _make_email(subject="multi-rule-a and multi-rule-b together")
-        )
+        result = detector.analyze_email(_make_email(subject="multi-rule-a and multi-rule-b together"))
         assert result.junk_score >= 3

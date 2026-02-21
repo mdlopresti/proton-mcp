@@ -6,7 +6,7 @@ import logging
 import os
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from html.parser import HTMLParser
 from typing import Any
 
@@ -129,11 +129,13 @@ class _UnsubscribeLinkParser(HTMLParser):
                         confirmed = True
                         break
 
-                self._all_links.append({
-                    "url": href,
-                    "text": anchor_text,
-                    "confirmed": confirmed,
-                })
+                self._all_links.append(
+                    {
+                        "url": href,
+                        "text": anchor_text,
+                        "confirmed": confirmed,
+                    }
+                )
 
             self._current_href = None
             self._current_text_parts = []
@@ -416,10 +418,7 @@ class UnsubscribeService:
         prefs = [
             p
             for p in prefs
-            if not (
-                p.get("sender", "").lower() == sender_lower
-                or p.get("domain", "").lower() == sender_lower
-            )
+            if not (p.get("sender", "").lower() == sender_lower or p.get("domain", "").lower() == sender_lower)
         ]
 
         if len(prefs) == original_len:
@@ -478,7 +477,7 @@ class UnsubscribeService:
             sender=sender,
             method=method,
             url=url,
-            date=datetime.now(timezone.utc).strftime("%Y-%m-%d"),
+            date=datetime.now(UTC).strftime("%Y-%m-%d"),
             success=success,
         )
         history.append(entry.to_dict())

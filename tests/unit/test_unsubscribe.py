@@ -27,10 +27,8 @@ from proton_mcp.models.email import (
     DetectionPattern,
     UnsubscribeHistoryEntry,
     UnsubscribeMethod,
-    UnsubscribePreference,
 )
 from proton_mcp.services.unsubscribe import UnsubscribeService
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -101,9 +99,7 @@ class TestRFC2369HeaderParsing:
         assert methods[0].source == "header"
 
     def test_parse_https_url(self, service: UnsubscribeService):
-        email = _make_email(
-            list_unsubscribe="<https://example.com/unsubscribe?id=123>"
-        )
+        email = _make_email(list_unsubscribe="<https://example.com/unsubscribe?id=123>")
         methods = service.find_unsubscribe_links(email)
         assert len(methods) == 1
         assert methods[0].type == "http"
@@ -112,12 +108,7 @@ class TestRFC2369HeaderParsing:
         assert methods[0].source == "header"
 
     def test_parse_multiple_urls(self, service: UnsubscribeService):
-        email = _make_email(
-            list_unsubscribe=(
-                "<mailto:unsub@example.com>, "
-                "<https://example.com/unsub>"
-            )
-        )
+        email = _make_email(list_unsubscribe=("<mailto:unsub@example.com>, <https://example.com/unsub>"))
         methods = service.find_unsubscribe_links(email)
         assert len(methods) == 2
         types = {m.type for m in methods}
@@ -137,9 +128,7 @@ class TestRFC2369HeaderParsing:
 
     def test_http_url_from_header(self, service: UnsubscribeService):
         """Also handle plain http:// URLs (not just https)."""
-        email = _make_email(
-            list_unsubscribe="<http://example.com/unsub>"
-        )
+        email = _make_email(list_unsubscribe="<http://example.com/unsub>")
         methods = service.find_unsubscribe_links(email)
         assert len(methods) == 1
         assert methods[0].url == "http://example.com/unsub"
@@ -333,30 +322,22 @@ class TestSSRFProtection:
     """URLs targeting internal networks should be rejected."""
 
     def test_reject_localhost_url(self, service: UnsubscribeService):
-        email = _make_email(
-            list_unsubscribe="<https://localhost/unsub>"
-        )
+        email = _make_email(list_unsubscribe="<https://localhost/unsub>")
         methods = service.find_unsubscribe_links(email)
         assert len(methods) == 0
 
     def test_reject_private_ip_url(self, service: UnsubscribeService):
-        email = _make_email(
-            list_unsubscribe="<https://192.168.1.1/unsub>"
-        )
+        email = _make_email(list_unsubscribe="<https://192.168.1.1/unsub>")
         methods = service.find_unsubscribe_links(email)
         assert len(methods) == 0
 
     def test_reject_loopback_ip(self, service: UnsubscribeService):
-        email = _make_email(
-            list_unsubscribe="<https://127.0.0.1/unsub>"
-        )
+        email = _make_email(list_unsubscribe="<https://127.0.0.1/unsub>")
         methods = service.find_unsubscribe_links(email)
         assert len(methods) == 0
 
     def test_allow_public_url(self, service: UnsubscribeService):
-        email = _make_email(
-            list_unsubscribe="<https://example.com/unsub>"
-        )
+        email = _make_email(list_unsubscribe="<https://example.com/unsub>")
         methods = service.find_unsubscribe_links(email)
         assert len(methods) == 1
 
@@ -396,9 +377,7 @@ class TestDeduplication:
 
     def test_mailto_and_http_both_preserved(self, service: UnsubscribeService):
         """Mailto and HTTP methods should not deduplicate against each other."""
-        email = _make_email(
-            list_unsubscribe="<mailto:unsub@example.com>, <https://example.com/unsub>"
-        )
+        email = _make_email(list_unsubscribe="<mailto:unsub@example.com>, <https://example.com/unsub>")
         methods = service.find_unsubscribe_links(email)
         assert len(methods) == 2
 
@@ -417,17 +396,13 @@ class TestExecuteUnsubscribe:
         mock_response.status_code = 200
         mock_get.return_value = mock_response
 
-        method = UnsubscribeMethod(
-            type="http", method="click", url="https://example.com/unsub"
-        )
+        method = UnsubscribeMethod(type="http", method="click", url="https://example.com/unsub")
         result = service.execute_unsubscribe(method)
         assert result is True
         mock_get.assert_called_once()
 
     @patch("proton_mcp.services.unsubscribe.requests.post")
-    def test_successful_one_click_post_returns_true(
-        self, mock_post, service: UnsubscribeService
-    ):
+    def test_successful_one_click_post_returns_true(self, mock_post, service: UnsubscribeService):
         mock_response = MagicMock()
         mock_response.status_code = 200
         mock_post.return_value = mock_response
@@ -451,16 +426,12 @@ class TestExecuteUnsubscribe:
         mock_response.status_code = 500
         mock_get.return_value = mock_response
 
-        method = UnsubscribeMethod(
-            type="http", method="click", url="https://example.com/unsub"
-        )
+        method = UnsubscribeMethod(type="http", method="click", url="https://example.com/unsub")
         result = service.execute_unsubscribe(method)
         assert result is False
 
     def test_unsafe_url_rejected(self, service: UnsubscribeService):
-        method = UnsubscribeMethod(
-            type="http", method="click", url="https://localhost/unsub"
-        )
+        method = UnsubscribeMethod(type="http", method="click", url="https://localhost/unsub")
         result = service.execute_unsubscribe(method)
         assert result is False
 
@@ -470,9 +441,7 @@ class TestExecuteUnsubscribe:
 
         mock_get.side_effect = req.exceptions.Timeout()
 
-        method = UnsubscribeMethod(
-            type="http", method="click", url="https://example.com/unsub"
-        )
+        method = UnsubscribeMethod(type="http", method="click", url="https://example.com/unsub")
         result = service.execute_unsubscribe(method)
         assert result is False
 
@@ -482,17 +451,13 @@ class TestExecuteUnsubscribe:
 
         mock_get.side_effect = req.exceptions.ConnectionError()
 
-        method = UnsubscribeMethod(
-            type="http", method="click", url="https://example.com/unsub"
-        )
+        method = UnsubscribeMethod(type="http", method="click", url="https://example.com/unsub")
         result = service.execute_unsubscribe(method)
         assert result is False
 
     def test_mailto_method_returns_false(self, service: UnsubscribeService):
         """Mailto unsubscribe is not supported for automated execution."""
-        method = UnsubscribeMethod(
-            type="mailto", method="email", address="unsub@example.com"
-        )
+        method = UnsubscribeMethod(type="mailto", method="email", address="unsub@example.com")
         result = service.execute_unsubscribe(method)
         assert result is False
 
@@ -502,9 +467,7 @@ class TestExecuteUnsubscribe:
         mock_response.status_code = 200
         mock_get.return_value = mock_response
 
-        method = UnsubscribeMethod(
-            type="http", method="click", url="https://example.com/unsub"
-        )
+        method = UnsubscribeMethod(type="http", method="click", url="https://example.com/unsub")
         service.execute_unsubscribe(method)
 
         history = service.get_history()
@@ -785,18 +748,14 @@ class TestEdgeCases:
         assert isinstance(methods, list)
 
     def test_url_with_special_characters(self, service: UnsubscribeService):
-        email = _make_email(
-            list_unsubscribe="<https://example.com/unsub?email=test%40example.com&token=abc123>"
-        )
+        email = _make_email(list_unsubscribe="<https://example.com/unsub?email=test%40example.com&token=abc123>")
         methods = service.find_unsubscribe_links(email)
         assert len(methods) == 1
         assert "test%40example.com" in methods[0].url
 
     def test_ftp_scheme_rejected(self, service: UnsubscribeService):
         """Only http/https schemes should be allowed."""
-        email = _make_email(
-            list_unsubscribe="<ftp://example.com/unsub>"
-        )
+        email = _make_email(list_unsubscribe="<ftp://example.com/unsub>")
         methods = service.find_unsubscribe_links(email)
         # ftp:// won't match the https? regex, so no methods
         assert len(methods) == 0

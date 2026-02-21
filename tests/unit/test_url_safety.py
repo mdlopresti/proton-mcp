@@ -1,7 +1,5 @@
 """Tests for proton_mcp.utils.url_safety module."""
 
-import pytest
-
 from proton_mcp.utils.url_safety import is_safe_url
 
 

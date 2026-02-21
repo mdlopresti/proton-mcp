@@ -65,7 +65,7 @@ class JsonStore:
             return initial_data
 
         try:
-            with open(self.file_path, "r", encoding="utf-8") as f:
+            with open(self.file_path, encoding="utf-8") as f:
                 fcntl.flock(f, fcntl.LOCK_SH)
                 try:
                     data = json.load(f)
@@ -78,11 +78,10 @@ class JsonStore:
         file_version = data.get("schema_version")
         if file_version != self.schema_version:
             raise ValueError(
-                f"Schema version mismatch in {self.file_path}: "
-                f"expected {self.schema_version}, got {file_version}"
+                f"Schema version mismatch in {self.file_path}: expected {self.schema_version}, got {file_version}"
             )
 
-        return data
+        return dict(data)
 
     def save(self, data: dict[str, Any]) -> None:
         """Atomically write data to the JSON file (write to temp, then rename).

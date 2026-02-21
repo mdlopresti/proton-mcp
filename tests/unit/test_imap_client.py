@@ -1,7 +1,7 @@
 """Tests for IMAPClient with UID-based operations."""
 
 import imaplib
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -14,6 +14,7 @@ _IMAP4Error = imaplib.IMAP4.error
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_raw_email(
     subject="Test Subject",
@@ -185,7 +186,7 @@ class TestIMAPClientSearch:
             result = client.search("ALL")
 
         assert result == ["101", "102", "103"]
-        mock_conn.uid.assert_called_once_with("search", None, "ALL")
+        mock_conn.uid.assert_called_once_with("search", "", "ALL")
 
     @patch("proton_mcp.clients.imap.imaplib.IMAP4")
     def test_search_uses_uid_command(self, mock_imap4_cls, mock_config):
@@ -198,7 +199,7 @@ class TestIMAPClientSearch:
             client.search("FROM test@example.com")
 
         # Verify uid() was called, not search()
-        mock_conn.uid.assert_called_with("search", None, "FROM test@example.com")
+        mock_conn.uid.assert_called_with("search", "", "FROM test@example.com")
         mock_conn.search.assert_not_called()
 
     @patch("proton_mcp.clients.imap.imaplib.IMAP4")

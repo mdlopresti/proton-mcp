@@ -29,9 +29,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -r requirements.txt -r requirements-dev.txt
+      - run: pip install -e ".[dev]" mypy
       - name: Run mypy
-        run: mypy proton-email-server.py
+        run: mypy src/proton_mcp
 
   security:
     name: Security Scan
@@ -43,9 +43,9 @@ jobs:
           python-version: "3.12"
       - run: pip install bandit
       - name: Run bandit
-        run: bandit -r . -f json -o bandit-report.json --exit-zero
+        run: bandit -r src/ -c pyproject.toml -f json -o bandit-report.json --exit-zero
       - name: Display results
-        run: bandit -r . -ll
+        run: bandit -r src/ -c pyproject.toml -ll
       - name: Upload report
         if: always()
         uses: actions/upload-artifact@v4
@@ -61,9 +61,9 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install pip-audit -r requirements.txt
+      - run: pip install pip-audit && pip install -e .
       - name: Run pip-audit
-        run: pip-audit -r requirements.txt
+        run: pip-audit
 
   test:
     name: Unit Tests

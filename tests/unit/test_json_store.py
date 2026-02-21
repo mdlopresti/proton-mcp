@@ -3,7 +3,6 @@
 import json
 import os
 import threading
-from pathlib import Path
 
 import pytest
 
@@ -198,7 +197,7 @@ class TestJsonStoreAtomicWrite:
         # Use a path that cannot be created (e.g. under /proc)
         bad_path = "/proc/fake_store_test/data.json"
         store = JsonStore(bad_path)
-        with pytest.raises(Exception):
+        with pytest.raises(OSError):
             store.save({"data": "test"})
 
 

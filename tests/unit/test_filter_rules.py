@@ -3,13 +3,12 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
 from proton_mcp.models.email import FilterRule
 from proton_mcp.services.filter_rules import FilterRuleEngine
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -49,7 +48,7 @@ def sample_email():
         "to": "me@proton.me",
         "subject": "Monthly Newsletter Update",
         "body": "Here is your monthly newsletter with great content.",
-        "date": datetime.now(tz=timezone.utc).isoformat(),
+        "date": datetime.now(tz=UTC).isoformat(),
     }
 
 
@@ -341,13 +340,13 @@ class TestMatchHasAttachments:
 class TestMatchOlderThanDays:
     def test_older_than_days_match(self, engine):
         rule = FilterRule(id="r1", name="test", conditions={"older_than_days": 7})
-        old_date = (datetime.now(tz=timezone.utc) - timedelta(days=10)).isoformat()
+        old_date = (datetime.now(tz=UTC) - timedelta(days=10)).isoformat()
         email = {"date": old_date}
         assert engine.email_matches_rule(email, rule) is True
 
     def test_older_than_days_no_match(self, engine):
         rule = FilterRule(id="r1", name="test", conditions={"older_than_days": 7})
-        recent_date = (datetime.now(tz=timezone.utc) - timedelta(days=3)).isoformat()
+        recent_date = (datetime.now(tz=UTC) - timedelta(days=3)).isoformat()
         email = {"date": recent_date}
         assert engine.email_matches_rule(email, rule) is False
 
@@ -365,13 +364,13 @@ class TestMatchOlderThanDays:
 class TestMatchNewerThanDays:
     def test_newer_than_days_match(self, engine):
         rule = FilterRule(id="r1", name="test", conditions={"newer_than_days": 7})
-        recent_date = (datetime.now(tz=timezone.utc) - timedelta(days=3)).isoformat()
+        recent_date = (datetime.now(tz=UTC) - timedelta(days=3)).isoformat()
         email = {"date": recent_date}
         assert engine.email_matches_rule(email, rule) is True
 
     def test_newer_than_days_no_match(self, engine):
         rule = FilterRule(id="r1", name="test", conditions={"newer_than_days": 7})
-        old_date = (datetime.now(tz=timezone.utc) - timedelta(days=10)).isoformat()
+        old_date = (datetime.now(tz=UTC) - timedelta(days=10)).isoformat()
         email = {"date": old_date}
         assert engine.email_matches_rule(email, rule) is False
 
@@ -567,16 +566,26 @@ class TestEdgeCases:
 
     def test_valid_conditions_list(self, engine):
         expected = [
-            "from", "to", "subject_contains", "subject_equals",
-            "body_contains", "sender_domain", "has_attachments",
-            "older_than_days", "newer_than_days",
+            "from",
+            "to",
+            "subject_contains",
+            "subject_equals",
+            "body_contains",
+            "sender_domain",
+            "has_attachments",
+            "older_than_days",
+            "newer_than_days",
         ]
         assert engine.valid_conditions() == expected
 
     def test_valid_actions_list(self, engine):
         expected = [
-            "move_to_folder", "mark_as_read", "mark_as_important",
-            "delete", "forward_to", "auto_reply",
+            "move_to_folder",
+            "mark_as_read",
+            "mark_as_important",
+            "delete",
+            "forward_to",
+            "auto_reply",
         ]
         assert engine.valid_actions() == expected
 
