@@ -1,3 +1,7 @@
+# DEPRECATED: This monolithic server has been replaced by the proton_mcp package.
+# Use `python -m proton_mcp` or `proton-mcp` instead.
+# This file is kept temporarily for reference and will be removed in a future release.
+
 import email
 import imaplib
 import ipaddress
@@ -56,12 +60,23 @@ class ProtonEmailClient:
         folder_name = folder_name.strip()
         if not folder_name:
             raise ValueError("Folder name cannot be empty")
-        # Allow alphanumeric, spaces, hyphens, underscores, dots, forward slashes (for nested folders)
-        if not re.match(r"^[\w\s\-./]+$", folder_name):
+        # Allow alphanumeric, spaces, hyphens, underscores, dots, forward/back slashes (for nested folders)
+        if not re.match(r"^[\w\s\-./\\]+$", folder_name):
             raise ValueError(f"Invalid folder name: {folder_name}")
         if ".." in folder_name:
             raise ValueError(f"Directory traversal not allowed in folder name: {folder_name}")
         return folder_name
+
+    @staticmethod
+    def _quote_mailbox(name: str) -> str:
+        """Quote a mailbox name for IMAP commands.
+
+        imaplib does not quote mailbox arguments, so names containing spaces
+        or backslashes must be quoted per RFC 3501.
+        """
+        name = name.replace("\\", "\\\\")
+        name = name.replace('"', '\\"')
+        return f'"{name}"'
 
     def connect_imap(self):
         """Connect to IMAP server"""
@@ -102,7 +117,7 @@ class ProtonEmailClient:
         mail = self.connect_imap()
         mailbox_selected = False
         try:
-            status, response = mail.select(mailbox)
+            status, response = mail.select(self._quote_mailbox(mailbox))
             if status != "OK":
                 logger.error(f"Failed to select mailbox '{mailbox}': {response}")
                 return []
@@ -177,7 +192,7 @@ class ProtonEmailClient:
         mail = self.connect_imap()
         mailbox_selected = False
         try:
-            status, response = mail.select(mailbox)
+            status, response = mail.select(self._quote_mailbox(mailbox))
             if status != "OK":
                 logger.error(f"Failed to select mailbox '{mailbox}': {response}")
                 return None
@@ -224,7 +239,7 @@ class ProtonEmailClient:
         mailbox_selected = False
 
         try:
-            status, response = mail.select(mailbox)
+            status, response = mail.select(self._quote_mailbox(mailbox))
             if status != "OK":
                 logger.error(f"Failed to select mailbox '{mailbox}': {response}")
                 return {}
@@ -301,7 +316,7 @@ class ProtonEmailClient:
         mailbox_selected = False
 
         try:
-            status, response = mail.select(mailbox)
+            status, response = mail.select(self._quote_mailbox(mailbox))
             if status != "OK":
                 logger.error(f"Failed to select mailbox '{mailbox}': {response}")
                 return {}
@@ -511,14 +526,14 @@ class ProtonEmailClient:
         mail = self.connect_imap()
         mailbox_selected = False
         try:
-            status, response = mail.select(source_folder)
+            status, response = mail.select(self._quote_mailbox(source_folder))
             if status != "OK":
                 logger.error(f"Failed to select source folder '{source_folder}': {response}")
                 return False
             mailbox_selected = True
 
             # Copy email to target folder
-            result = mail.copy(email_id, target_folder)
+            result = mail.copy(email_id, self._quote_mailbox(target_folder))
             if result[0] == "OK":
                 # Mark as deleted in source folder
                 mail.store(email_id, "+FLAGS", "\\Deleted")
@@ -560,7 +575,7 @@ class ProtonEmailClient:
         mailbox_selected = False
 
         try:
-            status, response = mail.select(source_folder)
+            status, response = mail.select(self._quote_mailbox(source_folder))
             if status != "OK":
                 logger.error(f"Failed to select source folder '{source_folder}': {response}")
                 return {
@@ -577,7 +592,7 @@ class ProtonEmailClient:
 
                 try:
                     # Bulk copy operation
-                    result = mail.copy(id_list, target_folder)
+                    result = mail.copy(id_list, self._quote_mailbox(target_folder))
 
                     if result[0] == "OK":
                         # Bulk mark as deleted
@@ -588,7 +603,7 @@ class ProtonEmailClient:
                         # If batch fails, try individual moves
                         for email_id in batch_ids:
                             try:
-                                individual_result = mail.copy(email_id, target_folder)
+                                individual_result = mail.copy(email_id, self._quote_mailbox(target_folder))
                                 if individual_result[0] == "OK":
                                     mail.store(email_id, "+FLAGS", "\\Deleted")
                                     moved_count += 1
@@ -604,7 +619,7 @@ class ProtonEmailClient:
                     # Fallback to individual moves for this batch
                     for email_id in batch_ids:
                         try:
-                            result = mail.copy(email_id, target_folder)
+                            result = mail.copy(email_id, self._quote_mailbox(target_folder))
                             if result[0] == "OK":
                                 mail.store(email_id, "+FLAGS", "\\Deleted")
                                 moved_count += 1
@@ -658,7 +673,7 @@ class ProtonEmailClient:
         mailbox_selected = False
 
         try:
-            status, response = mail.select(mailbox)
+            status, response = mail.select(self._quote_mailbox(mailbox))
             if status != "OK":
                 logger.error(f"Failed to select mailbox '{mailbox}': {response}")
                 return {"marked": 0, "failed": len(email_ids), "error": f"Failed to select mailbox: {mailbox}"}
@@ -730,7 +745,7 @@ class ProtonEmailClient:
                 mail = self.connect_imap()
                 mailbox_selected = False
                 try:
-                    status, response = mail.select(mailbox)
+                    status, response = mail.select(self._quote_mailbox(mailbox))
                     if status == "OK":
                         mailbox_selected = True
                         mail.expunge()
@@ -770,7 +785,7 @@ class ProtonEmailClient:
         """Create a new folder/mailbox"""
         mail = self.connect_imap()
         try:
-            status, response = mail.create(folder_name)
+            status, response = mail.create(self._quote_mailbox(folder_name))
             if status == "OK":
                 logger.info(f"Successfully created folder: {folder_name}")
                 return True
@@ -787,7 +802,7 @@ class ProtonEmailClient:
         """Delete an existing folder/mailbox"""
         mail = self.connect_imap()
         try:
-            status, response = mail.delete(folder_name)
+            status, response = mail.delete(self._quote_mailbox(folder_name))
             if status == "OK":
                 logger.info(f"Successfully deleted folder: {folder_name}")
                 return True
@@ -1205,7 +1220,7 @@ class ProtonEmailClient:
         mail = self.connect_imap()
         mailbox_selected = False
         try:
-            status, response = mail.select(mailbox)
+            status, response = mail.select(self._quote_mailbox(mailbox))
             if status != "OK":
                 logger.error(f"Failed to select mailbox '{mailbox}': {response}")
                 return None
