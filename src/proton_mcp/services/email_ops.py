@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
-from typing import Any
+import logging
+from datetime import datetime, timedelta, timezone
 
 from proton_mcp.clients.imap import IMAPClient
 from proton_mcp.clients.smtp import SMTPClient
 from proton_mcp.config import Config
 from proton_mcp.models.email import EmailSummary, FullEmail
+
+logger = logging.getLogger(__name__)
+
+_BODY_PREVIEW_LENGTH = 200
 
 
 class EmailService:
@@ -17,7 +22,7 @@ class EmailService:
     """
 
     def __init__(self, config: Config) -> None:
-        raise NotImplementedError
+        self._config = config
 
     def search_emails(
         self,
@@ -31,11 +36,56 @@ class EmailService:
         When include_body=False, skips body extraction for faster results
         (ENHANCEMENT-lightweight-search).
         """
-        raise NotImplementedError
+        with IMAPClient(self._config) as imap:
+            uids = imap.search(query, mailbox)
+            if not uids:
+                return []
+
+            # Limit to max_results (take the most recent UIDs, which are at the end)
+            uids = uids[-max_results:]
+
+            fetched = imap.fetch_batch(uids, mailbox)
+
+        results: list[EmailSummary] = []
+        for uid in uids:
+            data = fetched.get(uid)
+            if data is None:
+                continue
+
+            body = data.get("body", "")
+            if include_body:
+                preview = body[:_BODY_PREVIEW_LENGTH] if body else ""
+            else:
+                preview = ""
+
+            results.append(
+                EmailSummary(
+                    id=data["id"],
+                    subject=data.get("subject", ""),
+                    from_addr=data.get("from", ""),
+                    date=data.get("date", ""),
+                    body_preview=preview,
+                )
+            )
+
+        return results
 
     def get_full_email(self, uid: str, mailbox: str = "INBOX") -> FullEmail | None:
         """Fetch a single complete email by UID."""
-        raise NotImplementedError
+        with IMAPClient(self._config) as imap:
+            data = imap.fetch_one(uid, mailbox)
+
+        if data is None:
+            return None
+
+        return FullEmail(
+            id=data["id"],
+            subject=data.get("subject", ""),
+            from_addr=data.get("from", ""),
+            to_addr=data.get("to", ""),
+            date=data.get("date", ""),
+            body=data.get("body", ""),
+        )
 
     def send_email(
         self,
@@ -45,7 +95,8 @@ class EmailService:
         reply_to_id: str | None = None,
     ) -> bool:
         """Send an email. Returns True on success."""
-        raise NotImplementedError
+        with SMTPClient(self._config) as smtp:
+            return smtp.send_email(to, subject, body, reply_to_id)
 
     def get_recent_emails(
         self,
@@ -55,4 +106,7 @@ class EmailService:
         include_body: bool = True,
     ) -> list[EmailSummary]:
         """Get emails from the last N hours."""
-        raise NotImplementedError
+        since = datetime.now(tz=timezone.utc) - timedelta(hours=hours)
+        date_str = since.strftime("%d-%b-%Y")
+        query = f"SINCE {date_str}"
+        return self.search_emails(query, mailbox, max_results, include_body)
