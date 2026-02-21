@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "rules": [
+    {
+      "id": "test-rule-1",
+      "name": "GitHub Notifications",
+      "conditions": {"sender_domain": "github.com"},
+      "actions": {"move_to_folder": "GitHub", "mark_as_read": true},
+      "enabled": true,
+      "created_at": "2026-01-15T10:00:00",
+      "last_applied": null,
+      "emails_processed": 0
+    },
+    {
+      "id": "test-rule-2",
+      "name": "Marketing Emails",
+      "conditions": {"body_contains": "unsubscribe"},
+      "actions": {"move_to_folder": "Marketing"},
+      "enabled": true,
+      "created_at": "2026-01-20T14:30:00",
+      "last_applied": null,
+      "emails_processed": 0
+    }
+  ]
+}

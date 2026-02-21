@@ -1,3 +1,24 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "proton-mcp"
+version = "0.1.0"
+description = "MCP server providing email functionality for ProtonMail via Proton Bridge"
+requires-python = ">=3.12"
+dependencies = [
+    "mcp",
+    "requests",
+    "python-dotenv",
+]
+
+[project.scripts]
+proton-mcp = "proton_mcp.__main__:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
 [tool.ruff]
 target-version = "py312"
 line-length = 120
@@ -41,3 +62,18 @@ warn_unused_configs = true
 disallow_untyped_defs = false
 check_untyped_defs = true
 ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["src/proton_mcp"]
+omit = [
+    "proton-email-server.py",
+    "src/proton_mcp/__main__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "raise NotImplementedError",
+]

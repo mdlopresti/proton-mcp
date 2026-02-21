@@ -2,4 +2,15 @@ __pycache__/
 .env
 *.env
 venv/
+.venv/
 filter_rules.json
+junk_config.json
+unsubscribe_config.json
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+htmlcov/
+.coverage
+.ruff_cache/
+.mypy_cache/

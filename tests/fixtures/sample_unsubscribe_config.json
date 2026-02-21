@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "sender_preferences": [
+    {"domain": "marketing.spammy.com", "action": "always_unsubscribe"},
+    {"sender": "newsletter@important-news.com", "action": "never_unsubscribe"}
+  ],
+  "detection_patterns": [
+    {"id": "builtin-klaviyo", "name": "Klaviyo tracker", "pattern": "ctrk\\.klclick\\.com", "type": "tracker_domain", "enabled": true},
+    {"id": "builtin-sendgrid", "name": "SendGrid tracker", "pattern": "ct\\.sendgrid\\.net", "type": "tracker_domain", "enabled": true},
+    {"id": "custom-mailchimp", "name": "Mailchimp tracker", "pattern": "list-manage\\.com\\/track", "type": "tracker_domain", "enabled": true}
+  ],
+  "history": [
+    {"sender": "deals@old-store.com", "method": "one_click", "url": "https://example.com/unsub/123", "date": "2026-02-10", "success": true},
+    {"sender": "spam@example.com", "method": "http", "url": "https://example.com/unsub/456", "date": "2026-02-12", "success": false}
+  ]
+}

@@ -1,0 +1,8 @@
+From: sender@example.com
+To: test@proton.me
+Subject: Test Email
+Date: Thu, 20 Feb 2026 10:00:00 +0000
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+
+This is a simple test email body.

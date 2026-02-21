@@ -1,0 +1,26 @@
+{
+  "schema_version": 1,
+  "custom_patterns": [
+    {
+      "id": "custom-1",
+      "name": "Crypto scam subject",
+      "field": "subject",
+      "pattern": "bitcoin.*guaranteed.*return",
+      "score": 3,
+      "enabled": true
+    }
+  ],
+  "whitelist": {
+    "domains": ["uber.com", "experian.com", "chase.com"],
+    "senders": ["admin@trusted-company.com"]
+  },
+  "blacklist": {
+    "domains": ["spam-domain.tk", "phishing.ml"],
+    "senders": ["known-spammer@example.ga"]
+  },
+  "thresholds": {
+    "low": 1,
+    "medium": 2,
+    "high": 4
+  }
+}
