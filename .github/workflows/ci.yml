@@ -78,6 +78,19 @@ jobs:
       - name: Run tests with coverage
         run: pytest tests/unit/ --cov=src/proton_mcp --cov-fail-under=90 --cov-report=term-missing
 
+  integration-test:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[dev]" || pip install -e .
+      - run: pip install -r requirements-dev.txt
+      - name: Run integration tests
+        run: pytest tests/integration/ -v
+
   syntax:
     name: Syntax Check
     runs-on: ubuntu-latest
